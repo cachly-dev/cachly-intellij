@@ -37,7 +37,17 @@ private class BrainHealthDialog(
 
     override fun createCenterPanel(): JComponent {
         val panel = JPanel(BorderLayout(0, 12))
-        panel.preferredSize = Dimension(700, 500)
+        panel.preferredSize = Dimension(700, 520)
+
+        // ── Offline-pending banner (only shown when lessons are queued locally) ─
+        val pendingBanner: JComponent? = if (health.pendingLessons > 0) {
+            val msg = "⏳ ${health.pendingLessons} lesson${if (health.pendingLessons == 1) "" else "s"} saved offline — not yet synced to Brain. Will upload automatically on next refresh."
+            JLabel("<html><body style='background:#7a6000;color:#ffe58f;padding:6px;'>$msg</body></html>").also {
+                it.border = javax.swing.BorderFactory.createLineBorder(java.awt.Color(0xcc, 0xa0, 0x00))
+                it.isOpaque = true
+                it.background = java.awt.Color(0x3d, 0x30, 0x00)
+            }
+        } else null
 
         // ── Summary table ─────────────────────────────────────────────
         val tokensSaved = health.estimatedTokensSaved
@@ -94,7 +104,15 @@ private class BrainHealthDialog(
         """.trimIndent()
         val helpLabel = JLabel(helpHtml)
 
-        panel.add(summaryLabel, BorderLayout.NORTH)
+        // ── Layout ────────────────────────────────────────────────────
+        if (pendingBanner != null) {
+            val north = JPanel(BorderLayout(0, 8))
+            north.add(pendingBanner, BorderLayout.NORTH)
+            north.add(summaryLabel, BorderLayout.CENTER)
+            panel.add(north, BorderLayout.NORTH)
+        } else {
+            panel.add(summaryLabel, BorderLayout.NORTH)
+        }
         panel.add(scrollPane, BorderLayout.CENTER)
         panel.add(helpLabel, BorderLayout.SOUTH)
         return panel
@@ -103,6 +121,7 @@ private class BrainHealthDialog(
     private fun statusIcon(status: String) = when (status) {
         "healthy" -> "✅"
         "degraded" -> "⚠️"
+        "setup_needed" -> "🔧"
         else -> "❌"
     }
 

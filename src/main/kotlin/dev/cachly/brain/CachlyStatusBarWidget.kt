@@ -52,14 +52,23 @@ class CachlyStatusBarWidget(private val project: Project) :
     private fun refresh() {
         try {
             val health = CachlyApiClient.fetchHealth()
+            // Brain is reachable — attempt to flush any offline-queued lessons
+            if (health.status != "unreachable" && health.status != "not_configured") {
+                CachlyApiClient.drainOfflineQueue()
+            }
+            val settings = CachlySettings.getInstance().state
             val text = when (health.status) {
                 "not_configured" -> "🧠 Cachly: not configured"
                 "unreachable" -> "🧠 Brain: offline"
-                else -> "🧠 Brain: ${health.lessons} lessons"
+                else -> buildStatusText(health, settings)
             }
             SwingUtilities.invokeLater {
                 currentText = text
                 statusBar?.updateWidget(ID())
+                if (!settings.firstHitShown && health.lessons > 0) {
+                    settings.firstHitShown = true
+                    showFirstHitNotification(health.lessons)
+                }
             }
         } catch (_: Exception) {
             SwingUtilities.invokeLater {
@@ -67,6 +76,28 @@ class CachlyStatusBarWidget(private val project: Project) :
                 statusBar?.updateWidget(ID())
             }
         }
+    }
+
+    private fun buildStatusText(health: BrainHealth, settings: CachlySettings.State): String {
+        val base = "🧠 Brain: ${health.lessons}"
+        val pendingSuffix = if (health.pendingLessons > 0) " (⏳+${health.pendingLessons})" else ""
+        if (!settings.showCostSaved || health.totalRecalls == 0) return "$base lessons$pendingSuffix"
+        val costSaved = health.totalRecalls * 1200 * 0.000003
+        val iqSuffix = if (health.iqBoostPct > 0) " · 📈${health.iqBoostPct.toInt()}% IQ" else ""
+        return "$base · ~\$${"%.2f".format(costSaved)} saved$pendingSuffix$iqSuffix"
+    }
+
+    private fun showFirstHitNotification(lessons: Int) {
+        try {
+            val group = com.intellij.notification.NotificationGroupManager.getInstance()
+                .getNotificationGroup("Cachly Brain Ambient")
+                ?: return
+            group.createNotification(
+                "Cachly Brain is working!",
+                "Your Brain has $lessons lessons loaded. AI assistants connected to this Brain will have instant context.",
+                com.intellij.notification.NotificationType.INFORMATION
+            ).notify(project)
+        } catch (_: Exception) {}
     }
 
     override fun dispose() {

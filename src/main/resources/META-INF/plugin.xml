@@ -3,9 +3,8 @@
     <name>Cachly Brain</name>
     <vendor email="support@cachly.dev" url="https://cachly.dev">Cachly</vendor>
     <description><![CDATA[
-        <p>AI Brain health monitor for <a href="https://cachly.dev">Cachly</a>.</p>
-        <p>Shows lesson count, recall stats, and estimated token savings in the status bar.
-        Click to see all learned lessons with details.</p>
+        <p>AI Brain for <a href="https://cachly.dev">Cachly</a> — ambient learning, cost savings tracker, framework detection, zero-config setup.</p>
+        <p>Shows lesson count and estimated cost saved in the status bar. Detects repeated typing patterns and offers to save them as Brain lessons. Click the status bar widget to see all learned lessons with details.</p>
     ]]></description>
 
     <depends>com.intellij.modules.platform</depends>
@@ -22,13 +21,47 @@
                 displayName="Cachly Brain"/>
         <applicationService
                 serviceImplementation="dev.cachly.brain.CachlySettings"/>
+        <applicationService
+                serviceImplementation="dev.cachly.brain.OfflineLessonQueue"/>
+        <projectService
+                serviceImplementation="dev.cachly.brain.AmbientLearningService"/>
+        <postStartupActivity
+                implementation="dev.cachly.brain.FrameworkDetectionStartup"/>
+        <notificationGroup id="Cachly Brain Ambient"
+                           displayType="BALLOON"
+                           isLogByDefault="false"/>
     </extensions>
 
     <actions>
         <action id="Cachly.ShowBrainHealth"
                 class="dev.cachly.brain.ShowBrainHealthAction"
                 text="Show Brain Health"
-                description="Show Cachly Brain health and lesson details">
+                description="Show Cachly Brain health overview with recall stats">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+        <action id="Cachly.ShowLessons"
+                class="dev.cachly.brain.ShowLessonsAction"
+                text="Show Lessons"
+                description="Show all learned lessons with full details and what-worked content">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+        <action id="Cachly.SaveLesson"
+                class="dev.cachly.brain.SaveLessonAction"
+                text="Save Lesson to Brain"
+                description="Save a lesson or solution to your Cachly Brain">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+            <keyboard-shortcut keymap="$default" first-keystroke="ctrl shift B"/>
+        </action>
+        <action id="Cachly.SetupBrain"
+                class="dev.cachly.brain.SetupBrainAction"
+                text="Set Up AI Files"
+                description="Write .mcp.json, CLAUDE.md, AGENTS.md, copilot-instructions.md and the CLS git hook for this project">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+        <action id="Cachly.BrainDoctor"
+                class="dev.cachly.brain.BrainDoctorAction"
+                text="Run Brain Doctor"
+                description="Diagnose your Cachly Brain connection — checks API key, instance ID and connectivity">
             <add-to-group group-id="ToolsMenu" anchor="last"/>
         </action>
     </actions>

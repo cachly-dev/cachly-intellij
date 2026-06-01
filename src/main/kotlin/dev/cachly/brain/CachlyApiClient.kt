@@ -12,6 +12,13 @@ data class TopLesson(
     val severity: String? = null,
     @SerializedName("what_worked") val whatWorked: String = "",
     val ts: String? = null,
+    val author: String? = null,
+)
+
+data class MemoryCrystal(
+    val summary: String = "",
+    @SerializedName("patterns_hit") val patternsHit: Int = 0,
+    @SerializedName("created_at") val createdAt: String = "",
 )
 
 data class MemoryResponse(
@@ -23,6 +30,11 @@ data class MemoryResponse(
     @SerializedName("memory_used_bytes") val memoryUsedBytes: Long = 0,
     @SerializedName("memory_limit_bytes") val memoryLimitBytes: Long = 0,
     @SerializedName("memory_used_pct") val memoryUsedPct: Double = 0.0,
+    @SerializedName("total_recall_count") val totalRecallCount: Long = 0,
+    @SerializedName("recall_limit") val recallLimit: Int = -1,
+    @SerializedName("iq_boost_pct") val iqBoostPct: Double = 0.0,
+    @SerializedName("team_authors") val teamAuthors: List<String> = emptyList(),
+    val crystal: MemoryCrystal? = null,
 )
 
 data class InstanceResponse(
@@ -43,6 +55,13 @@ data class BrainHealth(
     val memoryUsedBytes: Long = 0,
     val memoryLimitBytes: Long = 0,
     val memoryUsedPct: Double = 0.0,
+    val iqBoostPct: Double = 0.0,
+    val teamAuthors: List<String> = emptyList(),
+    val crystal: MemoryCrystal? = null,
+    /** Lessons locally queued offline (not yet synced to Brain). */
+    val pendingLessons: Int = 0,
+    /** -1 = unlimited (paid tier). */
+    val recallLimit: Int = -1,
 ) {
     companion object {
         /** Average tokens saved per recall — reuses known solution instead of re-researching. */
@@ -72,9 +91,12 @@ object CachlyApiClient {
         val memJson = httpGet("$baseUrl/api/v1/instances/$id/memory", settings.apiKey)
         val mem = if (memJson != null) gson.fromJson(memJson, MemoryResponse::class.java) else MemoryResponse()
 
-        val totalRecalls = mem.topLessons.sumOf { it.recallCount }
+        val totalRecalls = if (mem.totalRecallCount > 0) mem.totalRecallCount.toInt()
+            else mem.topLessons.sumOf { it.recallCount }
         val lastSessionStr = mem.lastSession?.get("summary")?.toString()
             ?: mem.lastSession?.get("focus")?.toString()
+
+        val pendingCount = OfflineLessonQueue.getInstance().pendingCount()
 
         return BrainHealth(
             lessons = mem.lessonCount,
@@ -89,7 +111,60 @@ object CachlyApiClient {
             memoryUsedBytes = mem.memoryUsedBytes,
             memoryLimitBytes = mem.memoryLimitBytes,
             memoryUsedPct = mem.memoryUsedPct,
+            iqBoostPct = mem.iqBoostPct,
+            teamAuthors = mem.teamAuthors,
+            crystal = mem.crystal,
+            pendingLessons = pendingCount,
+            recallLimit = mem.recallLimit,
         )
+    }
+
+    fun saveLesson(topic: String, whatWorked: String): Boolean {
+        val settings = CachlySettings.getInstance().state
+        if (settings.apiKey.isBlank() || settings.instanceId.isBlank()) {
+            // No credentials — queue offline for later sync
+            OfflineLessonQueue.getInstance().enqueue(topic, whatWorked)
+            return false
+        }
+        val baseUrl = settings.apiUrl.trimEnd('/')
+        val body = gson.toJson(mapOf(
+            "topic" to topic,
+            "outcome" to "success",
+            "what_worked" to whatWorked,
+            "source" to "intellij",
+        ))
+        val ok = httpPost("$baseUrl/api/v1/instances/${settings.instanceId}/learn", settings.apiKey, body) != null
+        if (!ok) {
+            // API unreachable — save locally, will sync when Brain is reachable
+            OfflineLessonQueue.getInstance().enqueue(topic, whatWorked)
+        }
+        return ok
+    }
+
+    /**
+     * Attempts to upload all locally-queued lessons to the Brain.
+     * Called by the status bar widget on each successful refresh cycle.
+     * Lessons that fail to upload are re-queued for the next cycle.
+     */
+    fun drainOfflineQueue() {
+        val queue = OfflineLessonQueue.getInstance()
+        if (queue.pendingCount() == 0) return
+        val settings = CachlySettings.getInstance().state
+        if (settings.apiKey.isBlank() || settings.instanceId.isBlank()) return
+        val baseUrl = settings.apiUrl.trimEnd('/')
+        val pending = queue.drainSnapshot()
+        val failed = mutableListOf<OfflineLessonQueue.PendingLesson>()
+        for (lesson in pending) {
+            val body = gson.toJson(mapOf(
+                "topic" to lesson.topic,
+                "outcome" to "success",
+                "what_worked" to lesson.whatWorked,
+                "source" to lesson.source,
+            ))
+            val ok = httpPost("$baseUrl/api/v1/instances/${settings.instanceId}/learn", settings.apiKey, body) != null
+            if (!ok) failed.add(lesson)
+        }
+        if (failed.isNotEmpty()) queue.requeue(failed)
     }
 
     fun triggerRecall() {

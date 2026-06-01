@@ -3,7 +3,7 @@
 > **Cachly Brain — IntelliJ Plugin** — See your AI assistant's memory at a glance: lessons learned, tokens saved, session history, and brain health — right in your IDE's status bar.
 
 [![JetBrains Marketplace](https://img.shields.io/badge/JetBrains-Marketplace-orange?logo=jetbrains)](https://plugins.jetbrains.com/plugin/cachly-brain)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../../LICENSE)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](../../LICENSE)
 
 ---
 
@@ -61,8 +61,8 @@ The plugin is free. It connects to your cachly Brain instance:
 | Tier | RAM | Price |
 |------|-----|-------|
 | **Free** | 25 MB | €0/mo |
-| **Dev** | 200 MB | €9/mo |
-| **Pro** | 900 MB | €29/mo |
+| **Dev** | 200 MB | €19/mo |
+| **Pro** | 900 MB | €49/mo |
 | **Speed** | 900 MB Dragonfly + Semantic Cache | €79/mo |
 | **Business** | 7 GB | €199/mo |
 

@@ -10,6 +10,8 @@ class CachlySettingsConfigurable : Configurable {
     private var instanceIdField: JTextField? = null
     private var apiUrlField: JTextField? = null
     private var intervalField: JSpinner? = null
+    private var showCostSavedBox: JCheckBox? = null
+    private var ambientLearningBox: JCheckBox? = null
 
     override fun getDisplayName(): String = "Cachly Brain"
 
@@ -20,6 +22,8 @@ class CachlySettingsConfigurable : Configurable {
         instanceIdField = JTextField(settings.instanceId, 40)
         apiUrlField = JTextField(settings.apiUrl, 40)
         intervalField = JSpinner(SpinnerNumberModel(settings.refreshIntervalSec, 30, 3600, 30))
+        showCostSavedBox = JCheckBox("Show estimated cost saved in status bar", settings.showCostSaved)
+        ambientLearningBox = JCheckBox("Ambient learning (suggest saving repeated patterns)", settings.ambientLearning)
 
         panel = JPanel().apply {
             layout = BoxLayout(this, BoxLayout.Y_AXIS)
@@ -27,6 +31,8 @@ class CachlySettingsConfigurable : Configurable {
             add(labeledRow("Instance ID:", instanceIdField!!))
             add(labeledRow("API URL:", apiUrlField!!))
             add(labeledRow("Refresh Interval (sec):", intervalField!!))
+            add(showCostSavedBox!!)
+            add(ambientLearningBox!!)
         }
         return panel!!
     }
@@ -45,16 +51,21 @@ class CachlySettingsConfigurable : Configurable {
         return apiKeyField?.text != s.apiKey ||
                 instanceIdField?.text != s.instanceId ||
                 apiUrlField?.text != s.apiUrl ||
-                (intervalField?.value as? Int) != s.refreshIntervalSec
+                (intervalField?.value as? Int) != s.refreshIntervalSec ||
+                showCostSavedBox?.isSelected != s.showCostSaved ||
+                ambientLearningBox?.isSelected != s.ambientLearning
     }
 
     override fun apply() {
-        val settings = CachlySettings.getInstance()
-        settings.loadState(CachlySettings.State(
+        val existing = CachlySettings.getInstance().state
+        CachlySettings.getInstance().loadState(CachlySettings.State(
             apiKey = apiKeyField?.text ?: "",
             instanceId = instanceIdField?.text ?: "",
             apiUrl = apiUrlField?.text ?: "https://api.cachly.dev",
             refreshIntervalSec = (intervalField?.value as? Int) ?: 300,
+            showCostSaved = showCostSavedBox?.isSelected ?: true,
+            ambientLearning = ambientLearningBox?.isSelected ?: true,
+            firstHitShown = existing.firstHitShown,
         ))
     }
 
@@ -64,5 +75,7 @@ class CachlySettingsConfigurable : Configurable {
         instanceIdField?.text = s.instanceId
         apiUrlField?.text = s.apiUrl
         intervalField?.value = s.refreshIntervalSec
+        showCostSavedBox?.isSelected = s.showCostSaved
+        ambientLearningBox?.isSelected = s.ambientLearning
     }
 }

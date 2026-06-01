@@ -13,6 +13,9 @@ class CachlySettings : PersistentStateComponent<CachlySettings.State> {
         var instanceId: String = "",
         var apiUrl: String = "https://api.cachly.dev",
         var refreshIntervalSec: Int = 300,
+        var showCostSaved: Boolean = true,
+        var ambientLearning: Boolean = true,
+        var firstHitShown: Boolean = false,
     )
 
     private var myState = State()
