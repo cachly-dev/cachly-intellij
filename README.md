@@ -1,9 +1,33 @@
-# Your AI Brain, Visible Inside IntelliJ
+# 🧠 Your AI Brain, Visible Inside IntelliJ
 
-> **Cachly Brain — IntelliJ Plugin** — See your AI assistant's memory at a glance: lessons learned, tokens saved, session history, and brain health — right in your IDE's status bar.
+> **Your AI forgets everything when the IDE closes. This plugin makes it remember — and shows you proof.**  
+> See your AI assistant's memory at a glance: lessons learned, tokens saved, session history, and brain health — right in your IDE's status bar. Works in every JetBrains IDE.
 
-[![JetBrains Marketplace](https://img.shields.io/badge/JetBrains-Marketplace-orange?logo=jetbrains)](https://plugins.jetbrains.com/plugin/cachly-brain)
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](../../LICENSE)
+<p align="center">
+  <a href="https://plugins.jetbrains.com/plugin/32059-cachly-brain">
+    <img src="https://img.shields.io/jetbrains/plugin/v/32059-cachly-brain?logo=jetbrains&label=JetBrains%20Marketplace" alt="JetBrains Marketplace" />
+  </a>
+  &nbsp;
+  <a href="https://plugins.jetbrains.com/plugin/32059-cachly-brain">
+    <img src="https://img.shields.io/jetbrains/plugin/d/32059-cachly-brain?label=installs" alt="Installs" />
+  </a>
+  &nbsp;
+  <a href="https://plugins.jetbrains.com/plugin/32059-cachly-brain/reviews">
+    <img src="https://img.shields.io/jetbrains/plugin/r/rating/32059-cachly-brain?label=rating" alt="Rating" />
+  </a>
+  &nbsp;
+  <a href="https://cachly.dev?utm_source=jetbrains-marketplace&utm_medium=readme&utm_campaign=plugin">
+    <img src="https://img.shields.io/badge/Free%20Brain-%E2%82%AC0%2Fmo%20forever-brightgreen" alt="Free Brain" />
+  </a>
+  &nbsp;
+  <img src="https://img.shields.io/badge/License-Apache--2.0-yellow" alt="License" />
+</p>
+
+<p align="center">
+  <a href="https://cachly.dev?utm_source=jetbrains-marketplace&utm_medium=readme&utm_campaign=plugin-cta">
+    <img src="https://img.shields.io/badge/%E2%96%B6_Get_Your_Free_Brain-cachly.dev-7c3aed?style=for-the-badge" alt="Get Free Brain" />
+  </a>
+</p>
 
 ---
 
@@ -27,11 +51,11 @@ You've set up the cachly MCP server. Your AI assistant is now learning and remem
 
 ## Setup
 
-### From JetBrains Marketplace (coming soon)
-Search for **"Cachly Brain"** in **Settings → Plugins → Marketplace**.
+### From JetBrains Marketplace (recommended)
+**[Install Cachly Brain →](https://plugins.jetbrains.com/plugin/32059-cachly-brain)** or search for **"Cachly Brain"** in **Settings → Plugins → Marketplace**.
 
 ### Manual Install
-1. Download the `.zip` from [GitHub Releases](https://github.com/cachly-dev/intellij-plugin/releases)
+1. Download the `.zip` from [GitHub Releases](https://github.com/cachly-dev/cachly-intellij/releases)
 2. **Settings → Plugins → ⚙️ → Install Plugin from Disk** → select the `.zip`
 3. **Settings → Tools → Cachly Brain** and set:
 
@@ -83,7 +107,7 @@ cd sdk/intellij
 - [cachly.dev](https://cachly.dev) — Dashboard & free signup
 - [AI Brain docs](https://cachly.dev/docs/ai-memory) — MCP server setup
 - [MCP Server npm](https://www.npmjs.com/package/@cachly-dev/mcp-server) — The brain backend
-- [VS Code Extension](https://github.com/cachly-dev/vscode-extension)
+- [VS Code Extension](https://marketplace.visualstudio.com/items?itemName=cachly-dev.cachly-brain)
 
 ## License
 
