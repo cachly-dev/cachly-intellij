@@ -2,6 +2,8 @@ package dev.cachly.brain
 
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.progress.ProgressIndicator
+import com.intellij.openapi.progress.Task
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.DialogWrapper
 import javax.swing.*
@@ -19,17 +21,26 @@ class ShowLessonsAction : AnAction("Show Lessons") {
     }
 
     fun showPanel(project: Project) {
-        val health = CachlyApiClient.fetchHealth()
-        if (health.topLessons.isEmpty()) {
-            JOptionPane.showMessageDialog(
-                null,
-                "No lessons yet. AI assistants store lessons via learn_from_attempts() after fixing bugs or completing tasks.",
-                "Cachly Brain — Lessons",
-                JOptionPane.INFORMATION_MESSAGE,
-            )
-            return
-        }
-        LessonsDialog(project, health).show()
+        // FIX: fetch off the EDT — network call must not block the UI thread.
+        object : Task.Backgroundable(project, "Fetching Brain Lessons…", false) {
+            private var health: BrainHealth? = null
+            override fun run(indicator: ProgressIndicator) {
+                health = CachlyApiClient.fetchHealth()
+            }
+            override fun onSuccess() {
+                val h = health ?: BrainHealth()
+                if (h.topLessons.isEmpty()) {
+                    JOptionPane.showMessageDialog(
+                        null,
+                        "No lessons yet. AI assistants store lessons via learn_from_attempts() after fixing bugs or completing tasks.",
+                        "Cachly Brain — Lessons",
+                        JOptionPane.INFORMATION_MESSAGE,
+                    )
+                    return
+                }
+                LessonsDialog(project, h).show()
+            }
+        }.queue()
     }
 }
 

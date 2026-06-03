@@ -2,6 +2,26 @@
 
 ---
 
+## [0.3.1] – 2026-06-03 — *"ROI insights + EDT stability"*
+
+### Added
+- **ROI Insights in Brain Health dialog** — fetches `GET /api/v1/insights` (API-key
+  auth) and displays a "💰 ROI Summary" table: developer minutes saved, cost saved in
+  configured currency, knowledge-reuse %, time-to-first-recall p50. Best-effort —
+  dialog remains fully functional when endpoint is unavailable.
+- `InsightsResponse` data class (`CachlyApiClient.kt`).
+- `BrainHealth.insights: InsightsResponse?` field.
+- `CachlyApiClient.fetchInsights()` helper.
+
+### Fixed
+- **P0 EDT freeze** — `ShowBrainHealthAction.showPanel()` and
+  `ShowLessonsAction.showPanel()` were performing synchronous HTTP calls on the Event
+  Dispatch Thread, causing 5–10 second IDE freezes. Both now use
+  `Task.Backgroundable` (IntelliJ platform background task API) to fetch off the EDT
+  and open the dialog `onSuccess()`.
+
+---
+
 ## [0.3.0] – 2026-06-01
 
 ### Added

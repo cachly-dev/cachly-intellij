@@ -42,6 +42,17 @@ data class InstanceResponse(
     val status: String? = null,
 )
 
+data class InsightsResponse(
+    @SerializedName("minutes_saved") val minutesSaved: Double = 0.0,
+    @SerializedName("dollars_saved") val dollarsSaved: Double = 0.0,
+    @SerializedName("recalls_total") val recallsTotal: Long = 0,
+    @SerializedName("reuse_pct") val reusePct: Double = 0.0,
+    @SerializedName("ttfr_p50_sec") val ttfrP50Sec: Double = -1.0,
+    @SerializedName("ttfr_p90_sec") val ttfrP90Sec: Double = -1.0,
+    val currency: String = "EUR",
+    @SerializedName("hourly_rate") val hourlyRate: Double = 75.0,
+)
+
 data class BrainHealth(
     val lessons: Int = 0,
     val contexts: Int = 0,
@@ -62,6 +73,8 @@ data class BrainHealth(
     val pendingLessons: Int = 0,
     /** -1 = unlimited (paid tier). */
     val recallLimit: Int = -1,
+    /** ROI aggregates from /api/v1/insights — null if endpoint unavailable. */
+    val insights: InsightsResponse? = null,
 ) {
     companion object {
         /** Average tokens saved per recall — reuses known solution instead of re-researching. */
@@ -98,6 +111,9 @@ object CachlyApiClient {
 
         val pendingCount = OfflineLessonQueue.getInstance().pendingCount()
 
+        // 3. Fetch tenant-level ROI insights (best-effort — null if unavailable)
+        val insights = fetchInsights(baseUrl, settings.apiKey)
+
         return BrainHealth(
             lessons = mem.lessonCount,
             contexts = mem.contextCount,
@@ -116,7 +132,16 @@ object CachlyApiClient {
             crystal = mem.crystal,
             pendingLessons = pendingCount,
             recallLimit = mem.recallLimit,
+            insights = insights,
         )
+    }
+
+    /** Fetches tenant-level ROI aggregates. Returns null on any error (best-effort). */
+    fun fetchInsights(baseUrl: String, apiKey: String): InsightsResponse? {
+        val json = httpGet("$baseUrl/api/v1/insights", apiKey) ?: return null
+        return try {
+            gson.fromJson(json, InsightsResponse::class.java)
+        } catch (_: Exception) { null }
     }
 
     fun saveLesson(topic: String, whatWorked: String): Boolean {
