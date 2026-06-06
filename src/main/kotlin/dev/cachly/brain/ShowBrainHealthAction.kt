@@ -2,6 +2,8 @@ package dev.cachly.brain
 
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.progress.ProgressIndicator
+import com.intellij.openapi.progress.Task
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.DialogWrapper
 import javax.swing.*
@@ -19,9 +21,17 @@ class ShowBrainHealthAction : AnAction("Show Brain Health") {
     }
 
     fun showPanel(project: Project) {
-        val health = CachlyApiClient.fetchHealth()
-        val dialog = BrainHealthDialog(project, health)
-        dialog.show()
+        // FIX: fetch off the EDT — network call must not block the UI thread.
+        object : Task.Backgroundable(project, "Fetching Brain Health…", false) {
+            private var health: BrainHealth? = null
+            override fun run(indicator: ProgressIndicator) {
+                health = CachlyApiClient.fetchHealth()
+            }
+            override fun onSuccess() {
+                val dialog = BrainHealthDialog(project, health ?: BrainHealth())
+                dialog.show()
+            }
+        }.queue()
     }
 }
 
@@ -37,7 +47,7 @@ private class BrainHealthDialog(
 
     override fun createCenterPanel(): JComponent {
         val panel = JPanel(BorderLayout(0, 12))
-        panel.preferredSize = Dimension(700, 520)
+        panel.preferredSize = Dimension(700, 580)
 
         // ── Offline-pending banner (only shown when lessons are queued locally) ─
         val pendingBanner: JComponent? = if (health.pendingLessons > 0) {
@@ -58,6 +68,31 @@ private class BrainHealthDialog(
         val barLen = 20
         val filled = (health.memoryUsedPct / 100.0 * barLen).toInt().coerceIn(0, barLen)
         val storageBar = "█".repeat(filled) + "░".repeat(barLen - filled)
+
+        val recallLimitRow = if (health.recallLimit > 0)
+            "<tr><td><b>Recall Limit:</b></td><td>${health.recallLimit.toLocaleString()} / month</td></tr>"
+        else
+            "<tr><td><b>Recall Limit:</b></td><td>Unlimited ✨</td></tr>"
+
+        val iqBoostRow = if (health.iqBoostPct > 0)
+            "<tr><td><b>📈 IQ Boost:</b></td><td><b>${"%.0f".format(health.iqBoostPct)}%</b></td></tr>"
+        else ""
+
+        // ── ROI insights section ────────────────────────────────────────
+        val insightsHtml = health.insights?.let { ins ->
+            val curr = if (ins.currency == "EUR") "€" else ins.currency
+            val ttfr = if (ins.ttfrP50Sec > 0) "${"%.0f".format(ins.ttfrP50Sec)}s" else "—"
+            """
+            <h2>💰 ROI Summary</h2>
+            <table cellpadding="4">
+              <tr><td><b>Developer time saved:</b></td><td><b>${"%.0f".format(ins.minutesSaved)} min</b></td></tr>
+              <tr><td><b>Cost saved:</b></td><td><b>$curr${"%.2f".format(ins.dollarsSaved)}</b> <i>(at $curr${ins.hourlyRate}/h)</i></td></tr>
+              <tr><td><b>Knowledge reuse:</b></td><td><b>${"%.1f".format(ins.reusePct)}%</b> of recalls cross-author</td></tr>
+              <tr><td><b>Time-to-first-recall (p50):</b></td><td>$ttfr</td></tr>
+            </table>
+            """
+        } ?: ""
+
         val summaryHtml = """
             <html>
             <h2>Brain Overview</h2>
@@ -69,9 +104,12 @@ private class BrainHealthDialog(
               <tr><td><b>Total Recalls:</b></td><td><b>${health.totalRecalls}</b></td></tr>
               <tr><td><b>Est. Tokens Saved:</b></td><td>$tokensSaved</td></tr>
               <tr><td><b>Est. Cost Saved:</b></td><td>~$$costSaved</td></tr>
+              $recallLimitRow
+              $iqBoostRow
               <tr><td><b>Last Session:</b></td><td>${health.lastSession ?: "n/a"}</td></tr>
               <tr><td><b>Storage:</b></td><td><code>$storageBar</code> <b>$usedMB MB</b> / $limitMB MB ($pct%)</td></tr>
             </table>
+            $insightsHtml
             </html>
         """.trimIndent()
         val summaryLabel = JLabel(summaryHtml)
@@ -139,3 +177,5 @@ private class BrainHealthDialog(
         } catch (_: Exception) { ts }
     }
 }
+
+private fun Int.toLocaleString(): String = String.format("%,d", this)
