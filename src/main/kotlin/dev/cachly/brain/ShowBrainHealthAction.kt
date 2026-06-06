@@ -50,7 +50,7 @@ private class BrainHealthDialog(
         } else null
 
         // ── Summary table ─────────────────────────────────────────────
-        val tokensSaved = fmtTokens(health.estimatedTokensSaved)
+        val tokensSaved = fmtTokens(health.estimatedTokensSaved.toLong())
         val costSaved = "%.4f".format(health.estimatedTokensSaved * 0.000003)
         val usedMB = "%.2f".format(health.memoryUsedBytes / (1024.0 * 1024.0))
         val limitMB = health.memoryLimitBytes / (1024 * 1024)
