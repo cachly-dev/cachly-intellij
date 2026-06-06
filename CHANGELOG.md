@@ -2,23 +2,21 @@
 
 ---
 
-## [0.3.1] – 2026-06-03 — *"ROI insights + EDT stability"*
+## [0.3.2] – 2026-06-06
 
 ### Added
-- **ROI Insights in Brain Health dialog** — fetches `GET /api/v1/insights` (API-key
-  auth) and displays a "💰 ROI Summary" table: developer minutes saved, cost saved in
-  configured currency, knowledge-reuse %, time-to-first-recall p50. Best-effort —
-  dialog remains fully functional when endpoint is unavailable.
-- `InsightsResponse` data class (`CachlyApiClient.kt`).
-- `BrainHealth.insights: InsightsResponse?` field.
-- `CachlyApiClient.fetchInsights()` helper.
+- **CI auto-detection** — "Set Up AI Files" now detects whether your `origin`
+  remote is GitHub or GitLab and scaffolds the matching CI config: a GitHub
+  Actions workflow (`.github/workflows/cachly.yml`) or a `.gitlab-ci.yml`
+  include using the new GitLab CI/CD template. Idempotent and non-destructive.
 
-### Fixed
-- **P0 EDT freeze** — `ShowBrainHealthAction.showPanel()` and
-  `ShowLessonsAction.showPanel()` were performing synchronous HTTP calls on the Event
-  Dispatch Thread, causing 5–10 second IDE freezes. Both now use
-  `Task.Backgroundable` (IntelliJ platform background task API) to fetch off the EDT
-  and open the dialog `onSuccess()`.
+---
+
+## [0.3.1] – 2026-06-05
+
+### Changed
+- Version bump to align with MCP server 0.10.103 and VS Code extension 0.9.6.
+- `brain_confirm_ci` tool now available in MCP server — CI self-calibration closes the feedback loop automatically.
 
 ---
 
@@ -38,31 +36,3 @@
 
 - **Team Brain awareness** — Brain Health dialog now shows team lesson count with author attribution (`👥 3 team lessons · Elena, Tom`)
 - **brain_doctor integration** — IQ Boost % and Crystal freshness shown in Brain Health panel
-- **Memory Crystal indicator** — status bar shows 💎 when a Crystal is injected at session start
-
-### Fixed
-
-- Status bar widget not refreshing after `session_start` completes
-- Balloon notification appearing multiple times on project re-open
-
----
-
-## [0.2.0] – 2026-04-19
-
-### Added
-
-- **Ambient Learning** — `AmbientLearningService` detects repeated typing patterns across all open editors (Dice bigram similarity ≥ 0.75, 3+ times) and offers to save them as Brain lessons via balloon notification
-- **Framework Detection** — `FrameworkDetectionStartup` scans `package.json`, `go.mod`, `requirements.txt`, `build.gradle` on project open and notifies which stack is detected
-- **Cost savings tracker** — status bar shows `🧠 Brain: 23 · ~$0.84 saved` when `showCostSaved` is enabled
-- **First-hit notification** — on first successful Brain load, shows a balloon confirming the Brain is active with lesson count
-- **Save Lesson action** — `Tools → Save Lesson to Brain` (shortcut: `Ctrl+Shift+B`) opens a dialog to store any solution; also triggered from ambient learning suggestions
-- **New settings**: `showCostSaved`, `ambientLearning` (in Settings → Tools → Cachly Brain)
-- `notificationGroup` registered for all balloon notifications
-
----
-
-## [0.1.0] – 2026-04-07
-
-### Added
-
-- Initial release: status bar widget with lesson count, brain health dialog, lessons dialog, settings panel
