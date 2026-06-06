@@ -2,6 +2,16 @@
 
 ---
 
+## [0.3.2] – 2026-06-06
+
+### Added
+- **CI auto-detection** — "Set Up AI Files" now detects whether your `origin`
+  remote is GitHub or GitLab and scaffolds the matching CI config: a GitHub
+  Actions workflow (`.github/workflows/cachly.yml`) or a `.gitlab-ci.yml`
+  include using the new GitLab CI/CD template. Idempotent and non-destructive.
+
+---
+
 ## [0.3.1] – 2026-06-05
 
 ### Changed
