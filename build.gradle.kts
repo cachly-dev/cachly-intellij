@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "dev.cachly"
-version = "0.3.0"
+version = "0.3.2"
 
 repositories {
     mavenCentral()
@@ -42,6 +42,11 @@ intellijPlatform {
             <p>Works with the Cachly MCP server. Free tier forever &middot; GDPR &middot; EU servers.</p>
         """.trimIndent()
         changeNotes = """
+            <h3>0.3.1</h3>
+            <ul>
+              <li>Version bump to align with MCP server 0.10.103</li>
+              <li><b>brain_confirm_ci</b> now available — CI self-calibration closes the feedback loop automatically</li>
+            </ul>
             <h3>0.3.0</h3>
             <ul>
               <li>New <b>"Set Up AI Files"</b> action: one-click MCP config, agent instructions (CLAUDE.md, AGENTS.md, copilot-instructions), and a git post-commit learning hook</li>
@@ -53,17 +58,6 @@ intellijPlatform {
               <li>Team Brain awareness: lesson count with author attribution in Brain Health dialog</li>
               <li>brain_doctor: IQ Boost % and Crystal freshness in Brain Health panel</li>
               <li>💎 Memory Crystal indicator in status bar when Crystal is loaded</li>
-            </ul>
-            <h3>0.2.0</h3>
-            <ul>
-              <li>Added dedicated &quot;Show Lessons&quot; action (Tools menu) with full what-worked content and scrollable list</li>
-              <li>Lessons viewer shows all lessons with severity, recall count, and date</li>
-            </ul>
-            <h3>0.1.0</h3>
-            <ul>
-              <li>Initial release</li>
-              <li>Status bar brain health widget</li>
-              <li>Brain health overview with recall stats and token savings</li>
             </ul>
         """.trimIndent()
         ideaVersion {
@@ -77,8 +71,6 @@ intellijPlatform {
         }
     }
 
-    // Signing is optional. Only configure it when the certificate is provided via
-    // env vars (e.g. in CI), otherwise `publishPlugin` would require non-existent files.
     if (providers.environmentVariable("CERTIFICATE_CHAIN").isPresent) {
         signing {
             certificateChain = providers.environmentVariable("CERTIFICATE_CHAIN")
