@@ -49,7 +49,7 @@ private class BrainHealthDialog(
         val panel = JPanel(BorderLayout(0, 12))
         panel.preferredSize = Dimension(700, 580)
 
-        // ── Offline-pending banner (only shown when lessons are queued locally) ─
+        // ── Offline-pending banner ──────────────────────────────────────
         val pendingBanner: JComponent? = if (health.pendingLessons > 0) {
             val msg = "⏳ ${health.pendingLessons} lesson${if (health.pendingLessons == 1) "" else "s"} saved offline — not yet synced to Brain. Will upload automatically on next refresh."
             JLabel("<html><body style='background:#7a6000;color:#ffe58f;padding:6px;'>$msg</body></html>").also {
@@ -59,9 +59,9 @@ private class BrainHealthDialog(
             }
         } else null
 
-        // ── Summary table ─────────────────────────────────────────────
-        val tokensSaved = fmtTokens(health.estimatedTokensSaved.toLong())
-        val costSaved = "%.4f".format(health.estimatedTokensSaved * 0.000003)
+        // ── Summary table ───────────────────────────────────────────────
+        val tokensSaved = health.estimatedTokensSaved
+        val costSaved = "%.4f".format(tokensSaved * 0.000003)
         val usedMB = "%.2f".format(health.memoryUsedBytes / (1024.0 * 1024.0))
         val limitMB = health.memoryLimitBytes / (1024 * 1024)
         val pct = "%.1f".format(health.memoryUsedPct)
@@ -100,9 +100,9 @@ private class BrainHealthDialog(
               <tr><td><b>Status:</b></td><td>${statusIcon(health.status)} ${health.status}</td></tr>
               <tr><td><b>Tier:</b></td><td>${health.tier}</td></tr>
               <tr><td><b>Lessons Learned:</b></td><td><b>${health.lessons}</b></td></tr>
-              <tr><td><b>Context Entries:</b></td><td>${if (health.contexts > 0) health.contexts.toString() else "<i>0</i>"}</td></tr>
+              <tr><td><b>Context Entries:</b></td><td>${health.contexts}</td></tr>
               <tr><td><b>Total Recalls:</b></td><td><b>${health.totalRecalls}</b></td></tr>
-              <tr><td><b>Est. Tokens Saved:</b></td><td>$tokensSaved</td></tr>
+              <tr><td><b>Est. Tokens Saved:</b></td><td>~$tokensSaved</td></tr>
               <tr><td><b>Est. Cost Saved:</b></td><td>~$$costSaved</td></tr>
               $recallLimitRow
               $iqBoostRow
@@ -114,7 +114,7 @@ private class BrainHealthDialog(
         """.trimIndent()
         val summaryLabel = JLabel(summaryHtml)
 
-        // ── Lessons table ─────────────────────────────────────────────
+        // ── Lessons table ───────────────────────────────────────────────
         val columns = arrayOf("Topic", "Outcome", "Recalls", "Severity", "What Worked", "Date")
         val data = health.topLessons.map { l ->
             arrayOf(
@@ -133,7 +133,7 @@ private class BrainHealthDialog(
         }
         val scrollPane = JScrollPane(table)
 
-        // ── Help text ─────────────────────────────────────────────────
+        // ── Help text ───────────────────────────────────────────────────
         val helpHtml = """
             <html><p style="color:gray; font-size:11px;">
             💡 Lessons are created when an AI assistant calls <code>learn_from_attempts()</code> via the Cachly MCP server.
@@ -142,7 +142,7 @@ private class BrainHealthDialog(
         """.trimIndent()
         val helpLabel = JLabel(helpHtml)
 
-        // ── Layout ────────────────────────────────────────────────────
+        // ── Layout ──────────────────────────────────────────────────────
         if (pendingBanner != null) {
             val north = JPanel(BorderLayout(0, 8))
             north.add(pendingBanner, BorderLayout.NORTH)
@@ -154,12 +154,6 @@ private class BrainHealthDialog(
         panel.add(scrollPane, BorderLayout.CENTER)
         panel.add(helpLabel, BorderLayout.SOUTH)
         return panel
-    }
-
-    private fun fmtTokens(n: Long): String = when {
-        n >= 1_000_000 -> "~${"%.1f".format(n / 1_000_000.0)}M tokens"
-        n >= 1_000     -> "~${n / 1_000}k tokens"
-        else           -> "~$n tokens"
     }
 
     private fun statusIcon(status: String) = when (status) {

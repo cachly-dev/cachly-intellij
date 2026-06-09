@@ -42,10 +42,14 @@ intellijPlatform {
             <p>Works with the Cachly MCP server. Free tier forever &middot; GDPR &middot; EU servers.</p>
         """.trimIndent()
         changeNotes = """
+            <h3>0.3.2</h3>
+            <ul>
+              <li><b>CI auto-detection</b> &mdash; "Set Up AI Files" detects your git remote (GitHub or GitLab) and scaffolds the matching CI config: a GitHub Actions workflow or a GitLab CI/CD include. Idempotent and non-destructive.</li>
+            </ul>
             <h3>0.3.1</h3>
             <ul>
-              <li>Version bump to align with MCP server 0.10.103</li>
-              <li><b>brain_confirm_ci</b> now available — CI self-calibration closes the feedback loop automatically</li>
+              <li>Version alignment with MCP server 0.10.103 and VS Code extension 0.9.6</li>
+              <li>Compatible with <code>brain_confirm_ci</code> tool for CI self-calibration</li>
             </ul>
             <h3>0.3.0</h3>
             <ul>
@@ -59,6 +63,17 @@ intellijPlatform {
               <li>brain_doctor: IQ Boost % and Crystal freshness in Brain Health panel</li>
               <li>💎 Memory Crystal indicator in status bar when Crystal is loaded</li>
             </ul>
+            <h3>0.2.0</h3>
+            <ul>
+              <li>Added dedicated &quot;Show Lessons&quot; action (Tools menu) with full what-worked content and scrollable list</li>
+              <li>Lessons viewer shows all lessons with severity, recall count, and date</li>
+            </ul>
+            <h3>0.1.0</h3>
+            <ul>
+              <li>Initial release</li>
+              <li>Status bar brain health widget</li>
+              <li>Brain health overview with recall stats and token savings</li>
+            </ul>
         """.trimIndent()
         ideaVersion {
             sinceBuild = "241"
@@ -71,6 +86,8 @@ intellijPlatform {
         }
     }
 
+    // Signing is optional. Only configure it when the certificate is provided via
+    // env vars (e.g. in CI), otherwise `publishPlugin` would require non-existent files.
     if (providers.environmentVariable("CERTIFICATE_CHAIN").isPresent) {
         signing {
             certificateChain = providers.environmentVariable("CERTIFICATE_CHAIN")
