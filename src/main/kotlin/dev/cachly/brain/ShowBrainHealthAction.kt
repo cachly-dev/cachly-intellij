@@ -82,13 +82,29 @@ private class BrainHealthDialog(
         val insightsHtml = health.insights?.let { ins ->
             val curr = if (ins.currency == "EUR") "€" else ins.currency
             val ttfr = if (ins.ttfrP50Sec > 0) "${"%.0f".format(ins.ttfrP50Sec)}s" else "—"
+            // Cost-per-avoided-call: prefer the instance's configured price, else the $0.002 default.
+            val cpc = if (health.costPerCallUsd > 0) health.costPerCallUsd else 0.002
+            val cpcNote = if (health.costPerCallUsd > 0) "your configured rate" else "default — set it on the instance page"
+            // Week-over-week activity from the 30-day trend array.
+            val wow = computeWoW(ins.trend)
+            val wowPct = wow.pct
+            val wowRow = if (wowPct == null) {
+                "<tr><td><b>This week's activity:</b></td><td><b>${wow.thisWeek}</b> events <i>(no prior-week baseline yet)</i></td></tr>"
+            } else {
+                val arrow = if (wowPct > 0) "▲" else if (wowPct < 0) "▼" else "—"
+                val color = if (wowPct > 0) "#3fb950" else if (wowPct < 0) "#f85149" else "inherit"
+                val sign = if (wowPct > 0) "+" else ""
+                "<tr><td><b>Week-over-week activity:</b></td><td><b>${wow.thisWeek}</b> vs ${wow.lastWeek} last week &nbsp;<font color='$color'>$arrow $sign${"%.0f".format(wowPct)}%</font></td></tr>"
+            }
             """
             <h2>💰 ROI Summary</h2>
             <table cellpadding="4">
               <tr><td><b>Developer time saved:</b></td><td><b>${"%.0f".format(ins.minutesSaved)} min</b></td></tr>
               <tr><td><b>Cost saved:</b></td><td><b>$curr${"%.2f".format(ins.dollarsSaved)}</b> <i>(at $curr${ins.hourlyRate}/h)</i></td></tr>
+              <tr><td><b>Cost per avoided call:</b></td><td><b>$$cpc</b> <i>($cpcNote)</i></td></tr>
               <tr><td><b>Knowledge reuse:</b></td><td><b>${"%.1f".format(ins.reusePct)}%</b> of recalls cross-author</td></tr>
               <tr><td><b>Time-to-first-recall (p50):</b></td><td>$ttfr</td></tr>
+              $wowRow
             </table>
             """
         } ?: ""

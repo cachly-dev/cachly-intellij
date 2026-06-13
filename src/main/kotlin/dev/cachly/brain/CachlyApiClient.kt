@@ -40,6 +40,14 @@ data class MemoryResponse(
 data class InstanceResponse(
     val tier: String? = null,
     val status: String? = null,
+    @SerializedName("cost_per_call_usd") val costPerCallUsd: Double = 0.0,
+)
+
+/** One day of activity from the insights 30-day trend array. */
+data class TrendBucket(
+    val date: String = "",
+    val events: Int = 0,
+    val fixes: Int = 0,
 )
 
 data class InsightsResponse(
@@ -51,7 +59,22 @@ data class InsightsResponse(
     @SerializedName("ttfr_p90_sec") val ttfrP90Sec: Double = -1.0,
     val currency: String = "EUR",
     @SerializedName("hourly_rate") val hourlyRate: Double = 75.0,
+    val trend: List<TrendBucket> = emptyList(),
 )
+
+/** Week-over-week activity from the trend array: last 7 days vs the prior 7. */
+data class WeekOverWeek(val thisWeek: Int, val lastWeek: Int, val pct: Double?)
+
+/** pct is null when there is no prior-week baseline to compare against. */
+fun computeWoW(trend: List<TrendBucket>): WeekOverWeek {
+    if (trend.isEmpty()) return WeekOverWeek(0, 0, null)
+    val sorted = trend.sortedBy { it.date }
+    val thisWeek = sorted.takeLast(7).sumOf { it.events }
+    val prior = sorted.dropLast(7).takeLast(7)
+    val lastWeek = prior.sumOf { it.events }
+    val pct = if (lastWeek > 0) (thisWeek - lastWeek).toDouble() / lastWeek * 100 else null
+    return WeekOverWeek(thisWeek, lastWeek, pct)
+}
 
 data class BrainHealth(
     val lessons: Int = 0,
@@ -75,6 +98,8 @@ data class BrainHealth(
     val recallLimit: Int = -1,
     /** ROI aggregates from /api/v1/insights — null if endpoint unavailable. */
     val insights: InsightsResponse? = null,
+    /** Configured per-avoided-call price for ROI; 0 = use the $0.002 default. */
+    val costPerCallUsd: Double = 0.0,
 ) {
     companion object {
         /** Average tokens saved per recall — reuses known solution instead of re-researching. */
@@ -133,6 +158,7 @@ object CachlyApiClient {
             pendingLessons = pendingCount,
             recallLimit = mem.recallLimit,
             insights = insights,
+            costPerCallUsd = inst.costPerCallUsd,
         )
     }
 
