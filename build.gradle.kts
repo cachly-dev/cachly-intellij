@@ -120,16 +120,17 @@ tasks {
         sourceCompatibility = "21"
         targetCompatibility = "21"
     }
-    // The project compiles to Java 21 bytecode, but the IntelliJ Platform test
-    // task defaults to the IDE's bundled JBR 17 — which can't load class file
-    // version 65, so tests fail with UnsupportedClassVersionError. Pin the test
-    // launcher to a Java 21 toolchain. Our tests are pure unit tests (no IDE
-    // fixtures), so running them off the JBR is fine.
-    test {
-        javaLauncher.set(
-            javaToolchains.launcherFor {
-                languageVersion.set(JavaLanguageVersion.of(21))
-            }
-        )
-    }
+}
+
+// The project compiles to Java 21 bytecode, but the IntelliJ Platform test
+// task defaults to the IDE's bundled JBR 17 — which can't load class file
+// version 65, so tests fail with UnsupportedClassVersionError. Pin the test
+// launcher to a Java 21 toolchain. Our tests are pure unit tests (no IDE
+// fixtures), so running them off the JBR is fine.
+tasks.withType<Test>().configureEach {
+    javaLauncher.set(
+        javaToolchains.launcherFor {
+            languageVersion.set(JavaLanguageVersion.of(21))
+        }
+    )
 }
