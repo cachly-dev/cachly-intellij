@@ -2,6 +2,20 @@
 
 ---
 
+## [0.3.3] – 2026-06-13
+
+### Added
+- **Cost per avoided call** — the Brain Health dialog's ROI Summary now shows the
+  per-call price used for savings estimates, read from the instance's configured
+  `cost_per_call_usd` (falls back to the $0.002 default), so the dollar figures
+  reflect your real bill.
+- **Week-over-week activity** — a new ROI row compares this week's Brain activity
+  to the prior week (computed client-side from the insights 30-day trend) with a
+  ▲/▼ indicator and percentage change. Shows a "no baseline yet" hint until two
+  weeks of data exist.
+
+---
+
 ## [0.3.2] – 2026-06-06
 
 ### Added
