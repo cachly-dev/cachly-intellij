@@ -20,6 +20,11 @@ dependencies {
         instrumentationTools()
     }
     implementation("com.google.code.gson:gson:2.11.0")
+
+    // Plain JVM unit tests for pure logic (no IDE fixtures needed). JUnit4 via
+    // kotlin-test keeps the test task headless and CI-friendly.
+    testImplementation(kotlin("test"))
+    testImplementation("junit:junit:4.13.2")
 }
 
 intellijPlatform {
