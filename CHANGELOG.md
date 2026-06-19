@@ -2,17 +2,14 @@
 
 ---
 
-## [0.3.3] – 2026-06-13
+## [0.3.3] – 2026-06-20
 
-### Added
-- **Cost per avoided call** — the Brain Health dialog's ROI Summary now shows the
-  per-call price used for savings estimates, read from the instance's configured
-  `cost_per_call_usd` (falls back to the $0.002 default), so the dollar figures
-  reflect your real bill.
-- **Week-over-week activity** — a new ROI row compares this week's Brain activity
-  to the prior week (computed client-side from the insights 30-day trend) with a
-  ▲/▼ indicator and percentage change. Shows a "no baseline yet" hint until two
-  weeks of data exist.
+### Fixed
+- **Settings panel crash on IntelliJ 2024.1** — the plugin was compiled with a
+  Java 21 target while IntelliJ 2024.1 (sinceBuild 241) runs on Java 17, so
+  `CachlySettingsConfigurable` threw `UnsupportedClassVersionError` (class file
+  version 65.0) and the Settings panel could not be instantiated. The plugin now
+  targets Java 17, which runs across the entire declared 2024.1–2025.2 range.
 
 ---
 

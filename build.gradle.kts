@@ -20,11 +20,6 @@ dependencies {
         instrumentationTools()
     }
     implementation("com.google.code.gson:gson:2.11.0")
-
-    // Plain JVM unit tests for pure logic (no IDE fixtures needed). JUnit4 via
-    // kotlin-test keeps the test task headless and CI-friendly.
-    testImplementation(kotlin("test"))
-    testImplementation("junit:junit:4.13.2")
 }
 
 intellijPlatform {
@@ -47,6 +42,10 @@ intellijPlatform {
             <p>Works with the Cachly MCP server. Free tier forever &middot; GDPR &middot; EU servers.</p>
         """.trimIndent()
         changeNotes = """
+            <h3>0.3.3</h3>
+            <ul>
+              <li><b>Fix:</b> the Settings panel crashed on IntelliJ 2024.1 with <code>UnsupportedClassVersionError</code> &mdash; the plugin was compiled for Java 21 while 2024.1 runs on Java 17. Now targets Java 17 across the full 2024.1&ndash;2025.2 range.</li>
+            </ul>
             <h3>0.3.2</h3>
             <ul>
               <li><b>CI auto-detection</b> &mdash; "Set Up AI Files" detects your git remote (GitHub or GitLab) and scaffolds the matching CI config: a GitHub Actions workflow or a GitLab CI/CD include. Idempotent and non-destructive.</li>
@@ -113,24 +112,15 @@ intellijPlatform {
 }
 
 tasks {
+    // IntelliJ 2024.1 (sinceBuild 241) bundles JBR 17, so the plugin must
+    // target Java 17 — compiling to 21 made CachlySettingsConfigurable throw
+    // UnsupportedClassVersionError (class file 65.0) at runtime on 2024.1,
+    // crashing the Settings panel. 17 runs across the whole 241–252 range.
     withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
-        kotlinOptions.jvmTarget = "21"
+        kotlinOptions.jvmTarget = "17"
     }
     withType<JavaCompile> {
-        sourceCompatibility = "21"
-        targetCompatibility = "21"
+        sourceCompatibility = "17"
+        targetCompatibility = "17"
     }
-}
-
-// The project compiles to Java 21 bytecode, but the IntelliJ Platform test
-// task defaults to the IDE's bundled JBR 17 — which can't load class file
-// version 65, so tests fail with UnsupportedClassVersionError. Pin the test
-// launcher to a Java 21 toolchain. Our tests are pure unit tests (no IDE
-// fixtures), so running them off the JBR is fine.
-tasks.withType<Test>().configureEach {
-    javaLauncher.set(
-        javaToolchains.launcherFor {
-            languageVersion.set(JavaLanguageVersion.of(21))
-        }
-    )
 }
