@@ -80,18 +80,27 @@ private class BrainHealthDialog(
 
         // ── ROI insights section ────────────────────────────────────────
         val insightsHtml = health.insights?.let { ins ->
-            val curr = if (ins.currency == "EUR") "€" else ins.currency
-            val ttfr = if (ins.ttfrP50Sec > 0) "${"%.0f".format(ins.ttfrP50Sec)}s" else "—"
+            val ttfr = formatDuration(ins.ttfrP50Sec)
             """
-            <h2>💰 ROI Summary</h2>
+            <h2>💰 Brain ROI</h2>
             <table cellpadding="4">
               <tr><td><b>Developer time saved:</b></td><td><b>${"%.0f".format(ins.minutesSaved)} min</b></td></tr>
-              <tr><td><b>Cost saved:</b></td><td><b>$curr${"%.2f".format(ins.dollarsSaved)}</b> <i>(at $curr${ins.hourlyRate}/h)</i></td></tr>
-              <tr><td><b>Knowledge reuse:</b></td><td><b>${"%.1f".format(ins.reusePct)}%</b> of recalls cross-author</td></tr>
+              <tr><td><b>Cost saved:</b></td><td><b>${formatMoney(ins.dollarsSaved, ins.currency)}</b> <i>(at ${formatMoney(ins.hourlyRate, ins.currency)}/h)</i></td></tr>
               <tr><td><b>Time-to-first-recall (p50):</b></td><td>$ttfr</td></tr>
             </table>
             """
         } ?: ""
+
+        val teamHtml = """
+            <h2>👥 Team Brain</h2>
+            ${health.insights?.let { "<p><b>Knowledge reuse:</b> ${"%.1f".format(it.reusePct)}% <i>of recalls cross-author</i></p>" } ?: ""}
+            ${
+                if (health.teamAuthors.isEmpty())
+                    "<p style='color:gray;'>No team lessons yet. Set your name in Cachly settings to start attributing lessons.</p>"
+                else
+                    "<p>${health.teamAuthors.joinToString(" · ") { "<code>$it</code>" }}</p>"
+            }
+        """.trimIndent()
 
         val summaryHtml = """
             <html>
@@ -110,6 +119,7 @@ private class BrainHealthDialog(
               <tr><td><b>Storage:</b></td><td><code>$storageBar</code> <b>$usedMB MB</b> / $limitMB MB ($pct%)</td></tr>
             </table>
             $insightsHtml
+            $teamHtml
             </html>
         """.trimIndent()
         val summaryLabel = JLabel(summaryHtml)
@@ -169,6 +179,21 @@ private class BrainHealthDialog(
             val instant = Instant.parse(ts)
             DateTimeFormatter.ofPattern("yyyy-MM-dd").withZone(ZoneId.systemDefault()).format(instant)
         } catch (_: Exception) { ts }
+    }
+
+    private fun formatMoney(amount: Double, currency: String): String {
+        val symbol = if (currency.equals("EUR", ignoreCase = true)) "€" else "\$"
+        return "$symbol${"%,.2f".format(amount)}"
+    }
+
+    private fun formatDuration(seconds: Double): String {
+        if (!seconds.isFinite() || seconds <= 0.0) return "—"
+        if (seconds < 60.0) return "${seconds.toInt()}s"
+        if (seconds < 3600.0) return "${(seconds / 60.0).toInt()}m"
+        if (seconds < 86400.0) return "${(seconds / 3600.0).toInt()}h"
+        val days = (seconds / 86400.0).toInt()
+        val hours = ((seconds % 86400.0) / 3600.0).toInt()
+        return if (hours > 0) "${days}d ${hours}h" else "${days}d"
     }
 }
 

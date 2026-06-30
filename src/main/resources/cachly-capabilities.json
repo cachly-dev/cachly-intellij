@@ -1,0 +1,10 @@
+{
+  "plugin_id": "dev.cachly.brain",
+  "commands": {
+    "Cachly.ShowBrainHealth": "brain_lessons",
+    "Cachly.ShowLessons": "brain_lessons",
+    "Cachly.SaveLesson": "brain_lessons",
+    "Cachly.SetupBrain": "setup_auth",
+    "Cachly.BrainDoctor": "setup_auth"
+  }
+}

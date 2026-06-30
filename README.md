@@ -51,6 +51,10 @@ You've set up the cachly MCP server. Your AI assistant is now learning and remem
 
 ## Setup
 
+The IntelliJ action-to-capability map is tracked in
+[`src/main/resources/cachly-capabilities.json`](src/main/resources/cachly-capabilities.json)
+and rendered in [`../../docs/generated/surface-parity.md`](../../docs/generated/surface-parity.md).
+
 ### From JetBrains Marketplace (recommended)
 **[Install Cachly Brain →](https://plugins.jetbrains.com/plugin/32059-cachly-brain)** or search for **"Cachly Brain"** in **Settings → Plugins → Marketplace**.
 
