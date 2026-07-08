@@ -104,6 +104,63 @@ object CachlyInstructionWriter {
             }
         }.onFailure { skipped.add(".git/hooks/post-commit") }
 
+        // 3b. Ambient Recall hooks — .claude/hooks/*.sh + settings.json merge.
+        // Kept in sync with sdk/mcp/src/ambient-hooks.ts (cachly-dev/cachly): users
+        // who run Claude Code in the IDE terminal get push-based memory (session
+        // briefing, per-prompt recall, file briefing, auto-learn) automatically.
+        runCatching {
+            val hookDir = File(root, ".claude/hooks").apply { mkdirs() }
+            val events = linkedMapOf(
+                "SessionStart" to "cachly-ambient-session-start.sh",
+                "UserPromptSubmit" to "cachly-ambient-prompt-submit.sh",
+                "PreToolUse" to "cachly-ambient-pre-tool.sh",
+                "Stop" to "cachly-ambient-stop.sh",
+            )
+            val timeouts = mapOf("SessionStart" to 30, "UserPromptSubmit" to 10, "PreToolUse" to 10, "Stop" to 60)
+            var changedAny = false
+            val scriptPaths = linkedMapOf<String, String>()
+            for ((event, name) in events) {
+                val f = File(hookDir, name)
+                scriptPaths[event] = f.absolutePath.replace('\\', '/')
+                val script = buildAmbientHook(event, instanceId, apiKey) + "\n"
+                if (!f.exists() || f.readText() != script) {
+                    f.writeText(script)
+                    runCatching { f.setExecutable(true, false) }
+                    changedAny = true
+                }
+            }
+
+            val settingsFile = File(root, ".claude/settings.json")
+            val before = if (settingsFile.exists()) settingsFile.readText() else ""
+            val settings = if (before.isNotBlank()) parseJsoncObject(before) else mutableMapOf()
+            @Suppress("UNCHECKED_CAST")
+            val hooksMap = (settings["hooks"] as? MutableMap<String, Any?>) ?: mutableMapOf()
+            for ((event, scriptPath) in scriptPaths) {
+                // Upgrade-safe: drop any prior cachly-ambient group, keep foreign hooks.
+                val groups = ((hooksMap[event] as? List<Any?>) ?: emptyList()).filterNot { g ->
+                    val hooks = ((g as? Map<*, *>)?.get("hooks") as? List<*>) ?: emptyList<Any?>()
+                    hooks.isNotEmpty() && hooks.all { h ->
+                        (((h as? Map<*, *>)?.get("command")) as? String ?: "").contains(".claude/hooks/cachly-ambient-")
+                    }
+                }.toMutableList()
+                val entry = linkedMapOf<String, Any?>()
+                if (event == "PreToolUse") entry["matcher"] = "Edit|Write|MultiEdit|NotebookEdit"
+                entry["hooks"] = listOf(
+                    linkedMapOf("type" to "command", "command" to scriptPath, "timeout" to timeouts[event]),
+                )
+                groups.add(entry)
+                hooksMap[event] = groups
+            }
+            settings["hooks"] = hooksMap
+            val after = toJson(settings, 0)
+            if (after != before) {
+                settingsFile.parentFile.mkdirs()
+                settingsFile.writeText(after)
+                changedAny = true
+            }
+            if (changedAny) written.add(".claude/hooks (Ambient Recall)") else skipped.add(".claude/hooks (Ambient Recall)")
+        }.onFailure { skipped.add(".claude/hooks (Ambient Recall)") }
+
         // 4. CI scaffold — auto-detect GitHub vs GitLab and write the matching config.
         runCatching {
             when (detectGitRemoteHost(root)) {
@@ -219,6 +276,26 @@ object CachlyInstructionWriter {
         "node -e \"try{require('child_process').execSync('npx @cachly-dev/mcp-server@latest cls-ingest \\\\''+ JSON.stringify({instance_id:'\$CACHLY_INSTANCE',source:'git_commit',payload:{message:'\$MSG',sha:'\$SHA',files:'\$FILES'.split(',').filter(Boolean)}})+'\\\\'' ,{stdio:'ignore',timeout:5000})}catch(e){}\" 2>/dev/null &",
         "exit 0",
     ).joinToString("\n")
+
+    /**
+     * One Ambient Recall hook script. Kept byte-identical with the generators in
+     * sdk/mcp/src/ambient-hooks.ts (cachly-dev/cachly) so every installer
+     * (MCP init, VS Code, IntelliJ) upgrades the same scripts in place.
+     */
+    fun buildAmbientHook(event: String, instanceId: String, apiKey: String?): String {
+        val lines = mutableListOf(
+            "#!/bin/sh",
+            "# cachly Ambient Recall — $event v2",
+            "# Pushes relevant memory into context automatically. Never blocks the agent:",
+            "# any failure exits 0 with no output (graceful degrade).",
+            "export CACHLY_BRAIN_INSTANCE_ID=\"$instanceId\"",
+        )
+        if (!apiKey.isNullOrBlank()) lines.add("export CACHLY_JWT=\"$apiKey\"")
+        lines.add("export CACHLY_HOOK_EVENT=\"$event\"")
+        lines.add("cat | npx @cachly-dev/mcp-server@latest ambient-recall 2>/dev/null || true")
+        lines.add("exit 0")
+        return lines.joinToString("\n")
+    }
 
     fun buildBrainBlock(instanceId: String): String = """
 ## Cachly AI Brain — Always Active
