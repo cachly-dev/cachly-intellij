@@ -12,6 +12,7 @@ class CachlySettingsConfigurable : Configurable {
     private var intervalField: JSpinner? = null
     private var showCostSavedBox: JCheckBox? = null
     private var ambientLearningBox: JCheckBox? = null
+    private var proactiveBriefingBox: JCheckBox? = null
 
     override fun getDisplayName(): String = "Cachly Brain"
 
@@ -24,6 +25,7 @@ class CachlySettingsConfigurable : Configurable {
         intervalField = JSpinner(SpinnerNumberModel(settings.refreshIntervalSec, 30, 3600, 30))
         showCostSavedBox = JCheckBox("Show estimated cost saved in status bar", settings.showCostSaved)
         ambientLearningBox = JCheckBox("Ambient learning (suggest saving repeated patterns)", settings.ambientLearning)
+        proactiveBriefingBox = JCheckBox("Proactive briefing on project open (surface top lessons)", settings.proactiveBriefing)
 
         panel = JPanel().apply {
             layout = BoxLayout(this, BoxLayout.Y_AXIS)
@@ -33,6 +35,7 @@ class CachlySettingsConfigurable : Configurable {
             add(labeledRow("Refresh Interval (sec):", intervalField!!))
             add(showCostSavedBox!!)
             add(ambientLearningBox!!)
+            add(proactiveBriefingBox!!)
         }
         return panel!!
     }
@@ -53,7 +56,8 @@ class CachlySettingsConfigurable : Configurable {
                 apiUrlField?.text != s.apiUrl ||
                 (intervalField?.value as? Int) != s.refreshIntervalSec ||
                 showCostSavedBox?.isSelected != s.showCostSaved ||
-                ambientLearningBox?.isSelected != s.ambientLearning
+                ambientLearningBox?.isSelected != s.ambientLearning ||
+                proactiveBriefingBox?.isSelected != s.proactiveBriefing
     }
 
     override fun apply() {
@@ -65,6 +69,7 @@ class CachlySettingsConfigurable : Configurable {
             refreshIntervalSec = (intervalField?.value as? Int) ?: 300,
             showCostSaved = showCostSavedBox?.isSelected ?: true,
             ambientLearning = ambientLearningBox?.isSelected ?: true,
+            proactiveBriefing = proactiveBriefingBox?.isSelected ?: true,
             firstHitShown = existing.firstHitShown,
         ))
     }
@@ -77,5 +82,6 @@ class CachlySettingsConfigurable : Configurable {
         intervalField?.value = s.refreshIntervalSec
         showCostSavedBox?.isSelected = s.showCostSaved
         ambientLearningBox?.isSelected = s.ambientLearning
+        proactiveBriefingBox?.isSelected = s.proactiveBriefing
     }
 }

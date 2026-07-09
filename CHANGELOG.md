@@ -2,6 +2,23 @@
 
 ---
 
+## [0.4.0] – 2026-07-06
+
+### Added
+- **Proactive briefing on project open** — the plugin now fetches your Brain's
+  top lessons on project open and surfaces them as a notification (read-side
+  "ambient recall" — the push counterpart to "Show Lessons"). Fires only when
+  the Brain has lessons; opt-out via Settings → Cachly Brain → "Proactive
+  briefing on project open". All network I/O is off the EDT and fail-safe.
+  (Ambient Recall Tier C.)
+- **Cross-harness rules files** — "Set Up AI Files" now also writes
+  `.cursor/rules/cachly.mdc` (Cursor, with `alwaysApply` frontmatter),
+  `.windsurfrules` (Windsurf) and `.clinerules` (Cline) alongside CLAUDE.md /
+  AGENTS.md / copilot-instructions.md, so the Brain protocol reaches every AI
+  assistant. (Ambient Recall Tier A.)
+
+---
+
 ## [0.3.3] – 2026-06-20
 
 ### Fixed

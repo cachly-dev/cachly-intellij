@@ -15,6 +15,7 @@ class CachlySettings : PersistentStateComponent<CachlySettings.State> {
         var refreshIntervalSec: Int = 300,
         var showCostSaved: Boolean = true,
         var ambientLearning: Boolean = true,
+        var proactiveBriefing: Boolean = true,
         var firstHitShown: Boolean = false,
     )
 

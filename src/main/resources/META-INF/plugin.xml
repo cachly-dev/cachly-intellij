@@ -27,6 +27,8 @@
                 serviceImplementation="dev.cachly.brain.AmbientLearningService"/>
         <postStartupActivity
                 implementation="dev.cachly.brain.FrameworkDetectionStartup"/>
+        <postStartupActivity
+                implementation="dev.cachly.brain.ProactiveRecallStartup"/>
         <notificationGroup id="Cachly Brain Ambient"
                            displayType="BALLOON"
                            isLogByDefault="false"/>

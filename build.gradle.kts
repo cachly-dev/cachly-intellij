@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "dev.cachly"
-version = "0.3.3"
+version = "0.4.0"
 
 repositories {
     mavenCentral()
@@ -36,12 +36,18 @@ intellijPlatform {
               <li><b>One-click setup</b> &mdash; "Set Up AI Files" writes your MCP config, agent instructions, and a git post-commit learning hook. No terminal needed.</li>
               <li><b>Brain Doctor</b> &mdash; diagnoses your connection (API key, instance, network) and points you straight to the fix.</li>
               <li><b>Ambient learning</b> &mdash; detects repeated patterns and offers to save them as reusable lessons.</li>
+              <li><b>Proactive briefing</b> &mdash; surfaces your top lessons on project open, so the brain greets you instead of waiting to be asked.</li>
               <li><b>Status bar widget</b> &mdash; live lesson count, brain health, and estimated tokens saved.</li>
               <li><b>Lesson viewer</b> &mdash; browse every learned lesson with recall counts and severity.</li>
             </ul>
             <p>Works with the Cachly MCP server. Free tier forever &middot; GDPR &middot; EU servers.</p>
         """.trimIndent()
         changeNotes = """
+            <h3>0.4.0</h3>
+            <ul>
+              <li><b>Proactive briefing</b> &mdash; on project open the plugin now surfaces your Brain's top lessons as a notification (push-based recall), instead of waiting for "Show Lessons". Opt-out in Settings.</li>
+              <li><b>Cross-harness rules files</b> &mdash; "Set Up AI Files" now also writes <code>.cursor/rules/cachly.mdc</code>, <code>.windsurfrules</code> and <code>.clinerules</code>, so Cursor, Windsurf and Cline get the Brain protocol too.</li>
+            </ul>
             <h3>0.3.3</h3>
             <ul>
               <li><b>Fix:</b> the Settings panel crashed on IntelliJ 2024.1 with <code>UnsupportedClassVersionError</code> &mdash; the plugin was compiled for Java 21 while 2024.1 runs on Java 17. Now targets Java 17 across the full 2024.1&ndash;2025.2 range.</li>

@@ -10,8 +10,12 @@ import java.io.File
  *
  * Files written into the project root (or its git root):
  *  - .mcp.json
- *  - CLAUDE.md, AGENTS.md, .github/copilot-instructions.md  (same brain block)
+ *  - CLAUDE.md, AGENTS.md, .github/copilot-instructions.md,
+ *    .windsurfrules, .clinerules  (same marked brain block)
+ *  - .cursor/rules/cachly.mdc  (frontmatter + brain block, alwaysApply)
  *  - .git/hooks/post-commit  (CLS — Continuous Learning Stream)
+ *
+ * Cross-Harness Tier A — see docs/make_cachly_great_again.md §6.7.
  */
 object CachlyInstructionWriter {
 
@@ -57,13 +61,18 @@ object CachlyInstructionWriter {
             written.add(".mcp.json")
         }.onFailure { skipped.add(".mcp.json") }
 
-        // 2. Instruction files — same marked brain block in all three
+        // 2. Instruction/rules files — same marked brain block in each. CLAUDE.md
+        //    (Claude Code), AGENTS.md (Codex/agents), copilot-instructions.md
+        //    (Copilot), .windsurfrules (Windsurf), .clinerules (Cline) are shared
+        //    root files → append/replace, never clobber the user's content.
         val block = "$BRAIN_START\n${buildBrainBlock(instanceId)}$BRAIN_END"
         File(root, ".github").mkdirs()
         val targets = listOf(
             File(root, "CLAUDE.md"),
             File(root, "AGENTS.md"),
             File(root, ".github/copilot-instructions.md"),
+            File(root, ".windsurfrules"),
+            File(root, ".clinerules"),
         )
         for (file in targets) {
             runCatching {
@@ -81,6 +90,30 @@ object CachlyInstructionWriter {
                 written.add(file.relativeTo(root).path.replace('\\', '/'))
             }.onFailure { skipped.add(file.name) }
         }
+
+        // 2b. Cursor: .cursor/rules/cachly.mdc — needs YAML frontmatter (alwaysApply)
+        //     so the block is active every request. Frontmatter sits outside the
+        //     brain markers, so idempotent marker-replacement leaves it intact.
+        runCatching {
+            val cursorDir = File(root, ".cursor/rules").apply { mkdirs() }
+            val mdc = File(cursorDir, "cachly.mdc")
+            val frontmatter = "---\n" +
+                "description: Cachly AI Brain — persistent memory protocol (recall before tasks, learn after fixes)\n" +
+                "alwaysApply: true\n" +
+                "---\n\n"
+            val existing = if (mdc.exists()) mdc.readText() else ""
+            val updated = when {
+                existing.contains(BRAIN_START) && existing.contains(BRAIN_END) -> {
+                    val before = existing.substring(0, existing.indexOf(BRAIN_START))
+                    val after = existing.substring(existing.indexOf(BRAIN_END) + BRAIN_END.length)
+                    before + block + after
+                }
+                existing.isNotBlank() -> existing.trimEnd() + "\n\n" + block + "\n"
+                else -> frontmatter + block + "\n"
+            }
+            mdc.writeText(updated)
+            written.add(".cursor/rules/cachly.mdc")
+        }.onFailure { skipped.add(".cursor/rules/cachly.mdc") }
 
         // 3. CLS git post-commit hook
         runCatching {
