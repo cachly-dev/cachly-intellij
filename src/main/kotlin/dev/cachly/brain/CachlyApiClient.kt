@@ -79,6 +79,9 @@ data class BrainHealth(
     companion object {
         /** Average tokens saved per recall — reuses known solution instead of re-researching. */
         const val TOKENS_PER_RECALL = 1200
+
+        /** ~$3 per 1M tokens (blended LLM input rate) — used for the cost estimate. */
+        const val COST_PER_TOKEN = 0.000003
     }
 }
 
@@ -190,13 +193,6 @@ object CachlyApiClient {
             if (!ok) failed.add(lesson)
         }
         if (failed.isNotEmpty()) queue.requeue(failed)
-    }
-
-    fun triggerRecall() {
-        val settings = CachlySettings.getInstance().state
-        if (settings.apiKey.isBlank() || settings.instanceId.isBlank()) return
-        val baseUrl = settings.apiUrl.trimEnd('/')
-        httpPost("$baseUrl/api/v1/instances/${settings.instanceId}/recall", settings.apiKey, """{"source":"intellij"}""")
     }
 
     private fun httpGet(url: String, apiKey: String): String? {

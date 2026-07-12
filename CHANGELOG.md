@@ -2,6 +2,36 @@
 
 ---
 
+## [0.5.0] – 2026-07-12 — *"Honest metrics"*
+
+### Changed
+- **Honest metric labels.** Recall counts now say whether they are *this
+  month* (limited tiers) or *all-time* (unlimited); token/cost figures are
+  labeled as estimates with their basis (~1,200 tok per reused lesson); the
+  ROI section is now "Value estimate" with per-row explanations, and
+  time-to-first-recall became "Time to first payoff" (Brain creation → first
+  reused lesson), hidden when there is no data.
+- **Solo-Brain team state** — a single-author Brain no longer shows a
+  misleading "0.0% knowledge reuse"; it explains that cross-author metrics
+  appear once a teammate joins.
+- **Theme-aware colors** — the offline banner uses `JBColor` (light + dark)
+  instead of hardcoded dark-only hex values; lesson text no longer uses a
+  fixed `#444` that was unreadable in dark themes.
+- Lessons dialog is now titled "Lessons" and says "showing the N
+  most-recalled" instead of claiming to be "All Lessons" while rendering a
+  server-capped subset. Lesson authors are shown when attributed.
+- Brain Health lessons table is read-only (cells were editable before).
+- API key field in Settings is masked (`JPasswordField`).
+
+### Removed
+- **Hourly `/recall` heartbeat pings.** The status bar widget used to POST
+  `/recall` on install and every hour, inflating the recall counter that all
+  ROI metrics are derived from. Recalls are now only counted when an AI
+  actually reuses a lesson.
+- The "IQ Boost" percentage from the status bar.
+
+---
+
 ## [0.4.0] – 2026-07-06
 
 ### Added

@@ -53,7 +53,7 @@ class ProactiveRecallStartup : StartupActivity {
             if (top.isEmpty()) return@executeOnPooledThread
 
             val recallLabel = if (health.recallLimit > 0) {
-                "${health.totalRecalls}/${health.recallLimit} recalls"
+                "${health.totalRecalls}/${health.recallLimit} recalls this month"
             } else {
                 "${health.totalRecalls} recalls"
             }

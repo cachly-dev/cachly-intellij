@@ -41,10 +41,9 @@ class CachlyStatusBarWidget(private val project: Project) :
 
     override fun install(statusBar: StatusBar) {
         this.statusBar = statusBar
-        // Trigger a recall on first install — tracks IDE session as a recall
-        // Also re-triggers every hour for long-running IDE sessions
-        scheduler.execute { CachlyApiClient.triggerRecall() }
-        scheduler.scheduleAtFixedRate({ CachlyApiClient.triggerRecall() }, 1, 1, TimeUnit.HOURS)
+        // Note: this widget must never POST /recall itself. Heartbeat pings from
+        // the IDE inflate the recall counter that every ROI metric is derived
+        // from — recalls are only counted when an AI actually reuses a lesson.
         val interval = CachlySettings.getInstance().state.refreshIntervalSec.toLong()
         scheduledTask = scheduler.scheduleAtFixedRate({ refresh() }, 2, interval, TimeUnit.SECONDS)
     }
@@ -82,9 +81,8 @@ class CachlyStatusBarWidget(private val project: Project) :
         val base = "🧠 Brain: ${health.lessons}"
         val pendingSuffix = if (health.pendingLessons > 0) " (⏳+${health.pendingLessons})" else ""
         if (!settings.showCostSaved || health.totalRecalls == 0) return "$base lessons$pendingSuffix"
-        val costSaved = health.totalRecalls * 1200 * 0.000003
-        val iqSuffix = if (health.iqBoostPct > 0) " · 📈${health.iqBoostPct.toInt()}% IQ" else ""
-        return "$base · ~\$${"%.2f".format(costSaved)} saved$pendingSuffix$iqSuffix"
+        val costSaved = health.totalRecalls * BrainHealth.TOKENS_PER_RECALL * BrainHealth.COST_PER_TOKEN
+        return "$base · ~\$${"%.2f".format(costSaved)} est. saved$pendingSuffix"
     }
 
     private fun showFirstHitNotification(lessons: Int) {

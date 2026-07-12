@@ -137,17 +137,17 @@ object CachlyInstructionWriter {
             }
         }.onFailure { skipped.add(".git/hooks/post-commit") }
 
-        // 3b. Ambient Recall hooks — .claude/hooks/*.sh + settings.json merge.
+        // 3b. Ambient Recall hooks — .claude/hooks/*.mjs + settings.json merge.
         // Kept in sync with sdk/mcp/src/ambient-hooks.ts (cachly-dev/cachly): users
         // who run Claude Code in the IDE terminal get push-based memory (session
         // briefing, per-prompt recall, file briefing, auto-learn) automatically.
         runCatching {
             val hookDir = File(root, ".claude/hooks").apply { mkdirs() }
             val events = linkedMapOf(
-                "SessionStart" to "cachly-ambient-session-start.sh",
-                "UserPromptSubmit" to "cachly-ambient-prompt-submit.sh",
-                "PreToolUse" to "cachly-ambient-pre-tool.sh",
-                "Stop" to "cachly-ambient-stop.sh",
+                "SessionStart" to "cachly-ambient-session-start.mjs",
+                "UserPromptSubmit" to "cachly-ambient-prompt-submit.mjs",
+                "PreToolUse" to "cachly-ambient-pre-tool.mjs",
+                "Stop" to "cachly-ambient-stop.mjs",
             )
             val timeouts = mapOf("SessionStart" to 30, "UserPromptSubmit" to 10, "PreToolUse" to 10, "Stop" to 60)
             var changedAny = false
@@ -178,8 +178,10 @@ object CachlyInstructionWriter {
                 }.toMutableList()
                 val entry = linkedMapOf<String, Any?>()
                 if (event == "PreToolUse") entry["matcher"] = "Edit|Write|MultiEdit|NotebookEdit"
+                // v3: `node "<script>"` — one command string that /bin/sh (macOS/
+                // Linux, Windows+Git-Bash) and PowerShell (native Windows) run alike.
                 entry["hooks"] = listOf(
-                    linkedMapOf("type" to "command", "command" to scriptPath, "timeout" to timeouts[event]),
+                    linkedMapOf("type" to "command", "command" to "node \"$scriptPath\"", "timeout" to timeouts[event]),
                 )
                 groups.add(entry)
                 hooksMap[event] = groups
@@ -316,17 +318,27 @@ object CachlyInstructionWriter {
      * (MCP init, VS Code, IntelliJ) upgrades the same scripts in place.
      */
     fun buildAmbientHook(event: String, instanceId: String, apiKey: String?): String {
+        // v3: cross-platform Node script — the v1/v2 POSIX shell hooks silently
+        // never ran on native Windows (no /bin/sh).
+        fun js(v: String) = v.replace("\\", "\\\\").replace("'", "\\'")
         val lines = mutableListOf(
-            "#!/bin/sh",
-            "# cachly Ambient Recall — $event v2",
-            "# Pushes relevant memory into context automatically. Never blocks the agent:",
-            "# any failure exits 0 with no output (graceful degrade).",
-            "export CACHLY_BRAIN_INSTANCE_ID=\"$instanceId\"",
+            "#!/usr/bin/env node",
+            "// cachly Ambient Recall — $event v3",
+            "// Pushes relevant memory into context automatically. Cross-platform Node hook",
+            "// (no shell script — runs identically on Windows/macOS/Linux). Never blocks",
+            "// the agent: every failure path exits 0 with no output (graceful degrade).",
+            "import { spawn } from 'node:child_process';",
+            "process.env.CACHLY_BRAIN_INSTANCE_ID = '${js(instanceId)}';",
         )
-        if (!apiKey.isNullOrBlank()) lines.add("export CACHLY_JWT=\"$apiKey\"")
-        lines.add("export CACHLY_HOOK_EVENT=\"$event\"")
-        lines.add("cat | npx @cachly-dev/mcp-server@latest ambient-recall 2>/dev/null || true")
-        lines.add("exit 0")
+        if (!apiKey.isNullOrBlank()) lines.add("process.env.CACHLY_JWT = '${js(apiKey)}';")
+        lines.add("process.env.CACHLY_HOOK_EVENT = '${js(event)}';")
+        lines.add("try {")
+        lines.add("  const child = spawn('npx @cachly-dev/mcp-server@latest ambient-recall', { shell: true, stdio: ['inherit', 'inherit', 'ignore'] });")
+        lines.add("  child.on('error', () => process.exit(0));")
+        lines.add("  child.on('close', () => process.exit(0));")
+        lines.add("} catch {")
+        lines.add("  process.exit(0);")
+        lines.add("}")
         return lines.joinToString("\n")
     }
 

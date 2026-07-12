@@ -49,19 +49,24 @@ private class BrainHealthDialog(
         val panel = JPanel(BorderLayout(0, 12))
         panel.preferredSize = Dimension(700, 580)
 
-        // ── Offline-pending banner ──────────────────────────────────────
+        // ── Offline-pending banner (theme-aware via JBColor) ────────────
         val pendingBanner: JComponent? = if (health.pendingLessons > 0) {
             val msg = "⏳ ${health.pendingLessons} lesson${if (health.pendingLessons == 1) "" else "s"} saved offline — not yet synced to Brain. Will upload automatically on next refresh."
-            JLabel("<html><body style='background:#7a6000;color:#ffe58f;padding:6px;'>$msg</body></html>").also {
-                it.border = javax.swing.BorderFactory.createLineBorder(java.awt.Color(0xcc, 0xa0, 0x00))
+            JLabel("<html><body style='padding:6px;'>$msg</body></html>").also {
+                it.border = javax.swing.BorderFactory.createLineBorder(
+                    com.intellij.ui.JBColor(java.awt.Color(0xcc, 0xa0, 0x00), java.awt.Color(0x7a, 0x60, 0x00)))
                 it.isOpaque = true
-                it.background = java.awt.Color(0x3d, 0x30, 0x00)
+                it.background = com.intellij.ui.JBColor(java.awt.Color(0xff, 0xf4, 0xcc), java.awt.Color(0x3d, 0x30, 0x00))
             }
         } else null
 
         // ── Summary table ───────────────────────────────────────────────
-        val tokensSaved = health.estimatedTokensSaved
-        val costSaved = "%.4f".format(tokensSaved * 0.000003)
+        // Limited tiers report a MONTHLY recall counter, unlimited tiers all-time.
+        val monthly = health.recallLimit > 0
+        val recallScope = if (monthly) "this month" else "all-time"
+        val overLimit = monthly && health.totalRecalls >= health.recallLimit
+        val tokensSaved = formatTokens(health.estimatedTokensSaved)
+        val costSaved = "%.2f".format(health.estimatedTokensSaved * BrainHealth.COST_PER_TOKEN)
         val usedMB = "%.2f".format(health.memoryUsedBytes / (1024.0 * 1024.0))
         val limitMB = health.memoryLimitBytes / (1024 * 1024)
         val pct = "%.1f".format(health.memoryUsedPct)
@@ -69,38 +74,52 @@ private class BrainHealthDialog(
         val filled = (health.memoryUsedPct / 100.0 * barLen).toInt().coerceIn(0, barLen)
         val storageBar = "█".repeat(filled) + "░".repeat(barLen - filled)
 
-        val recallLimitRow = if (health.recallLimit > 0)
-            "<tr><td><b>Recall Limit:</b></td><td>${health.recallLimit.toLocaleString()} / month</td></tr>"
-        else
-            "<tr><td><b>Recall Limit:</b></td><td>Unlimited ✨</td></tr>"
+        val recallRow = if (monthly) {
+            val note = if (overLimit) " <b>— monthly limit reached</b>" else ""
+            "<tr><td><b>Recalls $recallScope:</b></td><td><b>${health.totalRecalls}</b> / ${health.recallLimit.toLocaleString()}$note</td></tr>"
+        } else {
+            "<tr><td><b>Recalls ($recallScope):</b></td><td><b>${health.totalRecalls}</b> · unlimited plan</td></tr>"
+        }
 
-        val iqBoostRow = if (health.iqBoostPct > 0)
-            "<tr><td><b>📈 IQ Boost:</b></td><td><b>${"%.0f".format(health.iqBoostPct)}%</b></td></tr>"
-        else ""
-
-        // ── ROI insights section ────────────────────────────────────────
+        // ── Value estimate — labeled heuristics, never presented as fact ──
         val insightsHtml = health.insights?.let { ins ->
-            val ttfr = formatDuration(ins.ttfrP50Sec)
-            """
-            <h2>💰 Brain ROI</h2>
-            <table cellpadding="4">
-              <tr><td><b>Developer time saved:</b></td><td><b>${"%.0f".format(ins.minutesSaved)} min</b></td></tr>
-              <tr><td><b>Cost saved:</b></td><td><b>${formatMoney(ins.dollarsSaved, ins.currency)}</b> <i>(at ${formatMoney(ins.hourlyRate, ins.currency)}/h)</i></td></tr>
-              <tr><td><b>Time-to-first-recall (p50):</b></td><td>$ttfr</td></tr>
-            </table>
+            val rows = StringBuilder()
+            if (ins.minutesSaved > 0) {
+                rows.append("<tr><td><b>Developer time saved:</b></td><td><b>${"%.0f".format(ins.minutesSaved)} min</b> <i>(heuristic: 30–240 min per reused lesson)</i></td></tr>")
+            }
+            if (ins.dollarsSaved > 0) {
+                rows.append("<tr><td><b>Cost saved:</b></td><td><b>${formatMoney(ins.dollarsSaved, ins.currency)}</b> <i>(at ${formatMoney(ins.hourlyRate, ins.currency)}/h)</i></td></tr>")
+            }
+            if (ins.ttfrP50Sec > 0) {
+                rows.append("<tr><td><b>Time to first payoff:</b></td><td>${formatDuration(ins.ttfrP50Sec)} <i>(Brain creation → first reused lesson)</i></td></tr>")
+            }
+            if (rows.isEmpty()) "" else """
+            <h2>💰 Value estimate</h2>
+            <p style='color:gray;'>Estimates derived from recall activity — not measured billing data.</p>
+            <table cellpadding="4">$rows</table>
             """
         } ?: ""
 
-        val teamHtml = """
+        // ── Team Brain — a solo Brain cannot have cross-author reuse, so
+        // showing "0.0%" would read as failure. Explain instead. ──────────
+        val teamHtml = if (health.teamAuthors.size >= 2) {
+            val reusePct = health.insights?.reusePct ?: 0.0
+            val reuseLine = if (reusePct > 0)
+                "<p><b>Knowledge reuse:</b> ${"%.1f".format(reusePct)}% of recalls reused a teammate's lesson</p>"
+            else
+                "<p style='color:gray;'>No cross-author recalls yet — fills up once teammates recall each other's lessons.</p>"
+            """
+            <h2>👥 Team Brain (${health.teamAuthors.size} contributors)</h2>
+            $reuseLine
+            <p>${health.teamAuthors.joinToString(" · ") { "<code>$it</code>" }}</p>
+            """.trimIndent()
+        } else {
+            """
             <h2>👥 Team Brain</h2>
-            ${health.insights?.let { "<p><b>Knowledge reuse:</b> ${"%.1f".format(it.reusePct)}% <i>of recalls cross-author</i></p>" } ?: ""}
-            ${
-                if (health.teamAuthors.isEmpty())
-                    "<p style='color:gray;'>No team lessons yet. Set your name in Cachly settings to start attributing lessons.</p>"
-                else
-                    "<p>${health.teamAuthors.joinToString(" · ") { "<code>$it</code>" }}</p>"
-            }
-        """.trimIndent()
+            <p style='color:gray;'>Solo Brain — cross-author metrics appear once a teammate uses this instance.
+            Set your name in Settings → Tools → Cachly Brain so lessons are attributed to you.</p>
+            """.trimIndent()
+        }
 
         val summaryHtml = """
             <html>
@@ -110,11 +129,9 @@ private class BrainHealthDialog(
               <tr><td><b>Tier:</b></td><td>${health.tier}</td></tr>
               <tr><td><b>Lessons Learned:</b></td><td><b>${health.lessons}</b></td></tr>
               <tr><td><b>Context Entries:</b></td><td>${health.contexts}</td></tr>
-              <tr><td><b>Total Recalls:</b></td><td><b>${health.totalRecalls}</b></td></tr>
-              <tr><td><b>Est. Tokens Saved:</b></td><td>~$tokensSaved</td></tr>
+              $recallRow
+              <tr><td><b>Est. Tokens Saved ($recallScope):</b></td><td>$tokensSaved <i>(~${BrainHealth.TOKENS_PER_RECALL} per reused lesson)</i></td></tr>
               <tr><td><b>Est. Cost Saved:</b></td><td>~$$costSaved</td></tr>
-              $recallLimitRow
-              $iqBoostRow
               <tr><td><b>Last Session:</b></td><td>${health.lastSession ?: "n/a"}</td></tr>
               <tr><td><b>Storage:</b></td><td><code>$storageBar</code> <b>$usedMB MB</b> / $limitMB MB ($pct%)</td></tr>
             </table>
@@ -137,7 +154,12 @@ private class BrainHealthDialog(
             )
         }.toTypedArray()
 
-        val table = JTable(data, columns).apply {
+        // Read-only model — the default JTable model makes every cell editable,
+        // which lets users "edit" display data that is never persisted.
+        val model = object : javax.swing.table.DefaultTableModel(data, columns) {
+            override fun isCellEditable(row: Int, column: Int): Boolean = false
+        }
+        val table = JTable(model).apply {
             autoResizeMode = JTable.AUTO_RESIZE_LAST_COLUMN
             fillsViewportHeight = true
         }
@@ -147,8 +169,9 @@ private class BrainHealthDialog(
         val helpHtml = """
             <html><p style="color:gray; font-size:11px;">
             💡 Lessons are created when an AI assistant calls <code>learn_from_attempts()</code> via the Cachly MCP server.
-            Recalls happen via <code>recall_best_solution()</code> or <code>session_start()</code>.
-            Each recall saves ~1,200 tokens.</p></html>
+            Recalls are counted only when a saved lesson is actually reused
+            (<code>recall_best_solution()</code>, <code>smart_recall()</code>) — passive IDE activity never counts.
+            Token savings are an estimate (~1,200 per reused lesson).</p></html>
         """.trimIndent()
         val helpLabel = JLabel(helpHtml)
 
@@ -184,6 +207,12 @@ private class BrainHealthDialog(
     private fun formatMoney(amount: Double, currency: String): String {
         val symbol = if (currency.equals("EUR", ignoreCase = true)) "€" else "\$"
         return "$symbol${"%,.2f".format(amount)}"
+    }
+
+    private fun formatTokens(n: Int): String {
+        if (n >= 1_000_000) return "~${"%.1f".format(n / 1_000_000.0)}M tokens"
+        if (n >= 1_000) return "~${n / 1_000}k tokens"
+        return "~$n tokens"
     }
 
     private fun formatDuration(seconds: Double): String {

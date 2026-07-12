@@ -6,7 +6,7 @@ import javax.swing.*
 class CachlySettingsConfigurable : Configurable {
 
     private var panel: JPanel? = null
-    private var apiKeyField: JTextField? = null
+    private var apiKeyField: JPasswordField? = null
     private var instanceIdField: JTextField? = null
     private var apiUrlField: JTextField? = null
     private var intervalField: JSpinner? = null
@@ -19,7 +19,8 @@ class CachlySettingsConfigurable : Configurable {
     override fun createComponent(): JComponent {
         val settings = CachlySettings.getInstance().state
 
-        apiKeyField = JTextField(settings.apiKey, 40)
+        // Masked input — the key is a credential and must not be shoulder-surfable.
+        apiKeyField = JPasswordField(settings.apiKey, 40)
         instanceIdField = JTextField(settings.instanceId, 40)
         apiUrlField = JTextField(settings.apiUrl, 40)
         intervalField = JSpinner(SpinnerNumberModel(settings.refreshIntervalSec, 30, 3600, 30))
@@ -49,9 +50,11 @@ class CachlySettingsConfigurable : Configurable {
         }
     }
 
+    private fun apiKeyText(): String = apiKeyField?.password?.let { String(it) } ?: ""
+
     override fun isModified(): Boolean {
         val s = CachlySettings.getInstance().state
-        return apiKeyField?.text != s.apiKey ||
+        return apiKeyText() != s.apiKey ||
                 instanceIdField?.text != s.instanceId ||
                 apiUrlField?.text != s.apiUrl ||
                 (intervalField?.value as? Int) != s.refreshIntervalSec ||
@@ -63,7 +66,7 @@ class CachlySettingsConfigurable : Configurable {
     override fun apply() {
         val existing = CachlySettings.getInstance().state
         CachlySettings.getInstance().loadState(CachlySettings.State(
-            apiKey = apiKeyField?.text ?: "",
+            apiKey = apiKeyText(),
             instanceId = instanceIdField?.text ?: "",
             apiUrl = apiUrlField?.text ?: "https://api.cachly.dev",
             refreshIntervalSec = (intervalField?.value as? Int) ?: 300,

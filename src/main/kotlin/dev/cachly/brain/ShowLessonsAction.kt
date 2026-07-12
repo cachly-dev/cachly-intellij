@@ -50,7 +50,7 @@ private class LessonsDialog(
 ) : DialogWrapper(project, false) {
 
     init {
-        title = "📖 Cachly Brain — All Lessons"
+        title = "📖 Cachly Brain — Lessons"
         init()
     }
 
@@ -58,12 +58,16 @@ private class LessonsDialog(
         val panel = JPanel(BorderLayout(0, 12))
         panel.preferredSize = Dimension(800, 560)
 
-        val tokensSaved = health.estimatedTokensSaved
+        // The /memory endpoint returns the most-recalled subset, not the full
+        // archive — say so instead of titling a partial list "All Lessons".
+        val recallScope = if (health.recallLimit > 0) "recalls this month" else "recalls"
+        val shownNote = if (health.lessons > health.topLessons.size)
+            " &nbsp;·&nbsp; showing the <b>${health.topLessons.size}</b> most-recalled"
+        else ""
         val headerHtml = """
             <html>
-            <h2>📖 All Lessons</h2>
-            <p><b>${health.lessons}</b> lessons &nbsp;·&nbsp; <b>${health.totalRecalls}</b> total recalls
-            &nbsp;·&nbsp; ~<b>$tokensSaved</b> tokens saved</p>
+            <h2>📖 Lessons</h2>
+            <p><b>${health.lessons}</b> lessons &nbsp;·&nbsp; <b>${health.totalRecalls}</b> $recallScope$shownNote</p>
             </html>
         """.trimIndent()
         val headerLabel = JLabel(headerHtml)
@@ -87,8 +91,8 @@ private class LessonsDialog(
                 <html>
                 <div style="padding:6px 0">
                 <b>$icon ${escHtml(l.topic)}</b> &nbsp; $sevIcon ${escHtml(l.severity ?: "minor")} &nbsp; · &nbsp;
-                ${l.recallCount}× recalled &nbsp; · &nbsp; $date<br/>
-                <span style="color:#444">✔ ${escHtml(l.whatWorked)}</span>
+                ${l.recallCount}× recalled &nbsp; · &nbsp; $date${l.author?.let { " &nbsp; · &nbsp; by ${escHtml(it)}" } ?: ""}<br/>
+                ✔ ${escHtml(l.whatWorked)}
                 </div><hr/>
                 </html>
             """.trimIndent()
@@ -101,7 +105,7 @@ private class LessonsDialog(
         val helpHtml = """
             <html><p style="color:gray;font-size:11px;">
             💡 Lessons are created when an AI assistant calls <code>learn_from_attempts()</code> via the Cachly MCP server.
-            Each recall via <code>recall_best_solution()</code> saves ~1,200 tokens.</p></html>
+            Recalls are counted only when a saved lesson is actually reused — token savings are an estimate (~1,200 per reused lesson).</p></html>
         """.trimIndent()
 
         panel.add(headerLabel, BorderLayout.NORTH)
