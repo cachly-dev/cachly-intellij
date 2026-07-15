@@ -27,6 +27,11 @@ import com.intellij.openapi.startup.StartupActivity
 class ProactiveRecallStartup : StartupActivity {
 
     override fun runActivity(project: Project) {
+        // Install the per-file briefing listener unconditionally — it re-checks
+        // the proactiveBriefing toggle on every event, so flipping the setting
+        // takes effect without a restart.
+        ProactiveFileBriefing.install(project)
+
         if (!CachlySettings.getInstance().state.proactiveBriefing) return
 
         ApplicationManager.getApplication().executeOnPooledThread {

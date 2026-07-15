@@ -26,7 +26,7 @@ class CachlySettingsConfigurable : Configurable {
         intervalField = JSpinner(SpinnerNumberModel(settings.refreshIntervalSec, 30, 3600, 30))
         showCostSavedBox = JCheckBox("Show estimated cost saved in status bar", settings.showCostSaved)
         ambientLearningBox = JCheckBox("Ambient learning (suggest saving repeated patterns)", settings.ambientLearning)
-        proactiveBriefingBox = JCheckBox("Proactive briefing on project open (surface top lessons)", settings.proactiveBriefing)
+        proactiveBriefingBox = JCheckBox("Proactive briefing (top lessons on project open, warnings on risky file open)", settings.proactiveBriefing)
 
         panel = JPanel().apply {
             layout = BoxLayout(this, BoxLayout.Y_AXIS)
@@ -74,6 +74,7 @@ class CachlySettingsConfigurable : Configurable {
             ambientLearning = ambientLearningBox?.isSelected ?: true,
             proactiveBriefing = proactiveBriefingBox?.isSelected ?: true,
             firstHitShown = existing.firstHitShown,
+            briefingSuppressed = existing.briefingSuppressed,
         ))
     }
 

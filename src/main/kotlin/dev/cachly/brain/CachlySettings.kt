@@ -17,6 +17,11 @@ class CachlySettings : PersistentStateComponent<CachlySettings.State> {
         var ambientLearning: Boolean = true,
         var proactiveBriefing: Boolean = true,
         var firstHitShown: Boolean = false,
+        /**
+         * "Not helpful" suppressions for per-file briefings, keyed
+         * "relPath::topic" -> epoch millis. Capped at 300 (oldest evicted).
+         */
+        var briefingSuppressed: MutableMap<String, Long> = mutableMapOf(),
     )
 
     private var myState = State()

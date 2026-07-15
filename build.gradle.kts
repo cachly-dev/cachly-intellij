@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "dev.cachly"
-version = "0.5.0"
+version = "0.6.0"
 
 repositories {
     mavenCentral()
@@ -43,6 +43,11 @@ intellijPlatform {
             <p>Works with the Cachly MCP server. Free tier forever &middot; GDPR &middot; EU servers.</p>
         """.trimIndent()
         changeNotes = """
+            <h3>0.6.0</h3>
+            <ul>
+              <li><b>Per-file fix hints</b> &mdash; opening a file the Brain knows has a failure pattern now shows a warning with severity and confidence, plus <i>Show fix</i> (full lesson card: outcome, confidence, author, learned date, and the exact tokens that triggered the match), <i>Copy fix</i>, and <i>Not helpful</i> (suppresses that lesson for that file, remembered across restarts). Parity with VS Code 0.12.0.</li>
+              <li><b>Hint telemetry</b> &mdash; anonymous shown/opened/copied/not-helpful events so hint quality becomes measurable.</li>
+            </ul>
             <h3>0.4.0</h3>
             <ul>
               <li><b>Proactive briefing</b> &mdash; on project open the plugin now surfaces your Brain's top lessons as a notification (push-based recall), instead of waiting for "Show Lessons". Opt-out in Settings.</li>

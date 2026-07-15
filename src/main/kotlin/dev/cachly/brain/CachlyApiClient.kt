@@ -53,6 +53,24 @@ data class InsightsResponse(
     @SerializedName("hourly_rate") val hourlyRate: Double = 75.0,
 )
 
+data class BriefingWarning(
+    val topic: String = "",
+    val confidence: Double = 0.0,
+    val severity: String = "info",
+    val message: String = "",
+    val fix: String = "",
+    val outcome: String? = null,
+    val author: String? = null,
+    @SerializedName("learned_at") val learnedAt: String? = null,
+    @SerializedName("matched_on") val matchedOn: List<String> = emptyList(),
+)
+
+data class BriefingResponse(
+    @SerializedName("risk_level") val riskLevel: String = "low",
+    val warnings: List<BriefingWarning> = emptyList(),
+    @SerializedName("matched_lessons") val matchedLessons: Int = 0,
+)
+
 data class BrainHealth(
     val lessons: Int = 0,
     val contexts: Int = 0,
@@ -193,6 +211,52 @@ object CachlyApiClient {
             if (!ok) failed.add(lesson)
         }
         if (failed.isNotEmpty()) queue.requeue(failed)
+    }
+
+    /**
+     * Per-file proactive briefing: asks the Brain whether it holds failure
+     * patterns for a just-opened file. Null on any error or missing credentials
+     * — the caller degrades silently (a briefing must never surface errors).
+     */
+    fun fetchBriefing(relPath: String): BriefingResponse? {
+        val settings = CachlySettings.getInstance().state
+        if (settings.apiKey.isBlank() || settings.instanceId.isBlank()) return null
+        val baseUrl = settings.apiUrl.trimEnd('/')
+        val body = gson.toJson(mapOf("event_type" to "file_open", "context" to relPath))
+        val json = httpPost(
+            "$baseUrl/api/v1/instances/${settings.instanceId}/briefing",
+            settings.apiKey,
+            body,
+        ) ?: return null
+        return try {
+            gson.fromJson(json, BriefingResponse::class.java)
+        } catch (_: Exception) { null }
+    }
+
+    /**
+     * Fire-and-forget anonymous usage ping (same endpoint the VS Code extension
+     * and MCP server use). Must be called off the EDT; never throws.
+     */
+    fun trackEvent(event: String) {
+        val settings = CachlySettings.getInstance().state
+        val baseUrl = settings.apiUrl.trimEnd('/')
+        val body = gson.toJson(mapOf(
+            "event" to event,
+            "editor" to "intellij",
+            "source" to "intellij",
+            "api_key" to settings.apiKey,
+            "instance_id" to settings.instanceId,
+        ))
+        try {
+            val conn = URI("$baseUrl/api/v1/telemetry/mcp").toURL().openConnection() as HttpURLConnection
+            conn.requestMethod = "POST"
+            conn.connectTimeout = 3000
+            conn.readTimeout = 3000
+            conn.doOutput = true
+            conn.setRequestProperty("Content-Type", "application/json")
+            conn.outputStream.bufferedWriter().use { it.write(body) }
+            conn.responseCode // drain — telemetry must never break UX
+        } catch (_: Exception) { /* silently ignore */ }
     }
 
     private fun httpGet(url: String, apiKey: String): String? {
