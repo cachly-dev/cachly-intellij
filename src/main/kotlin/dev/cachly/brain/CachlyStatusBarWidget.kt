@@ -64,7 +64,7 @@ class CachlyStatusBarWidget(private val project: Project) :
             SwingUtilities.invokeLater {
                 currentText = text
                 statusBar?.updateWidget(ID())
-                if (!settings.firstHitShown && health.lessons > 0) {
+                if (!settings.quietMode && !settings.firstHitShown && health.lessons > 0) {
                     settings.firstHitShown = true
                     showFirstHitNotification(health.lessons)
                 }
@@ -79,7 +79,9 @@ class CachlyStatusBarWidget(private val project: Project) :
 
     private fun buildStatusText(health: BrainHealth, settings: CachlySettings.State): String {
         val base = "🧠 Brain: ${health.lessons}"
-        val pendingSuffix = if (health.pendingLessons > 0) " (⏳+${health.pendingLessons})" else ""
+        // ⟳ = showing the last known counts while reconnecting (cold-start guard).
+        val snap = if (health.showingSnapshot) " ⟳" else ""
+        val pendingSuffix = (if (health.pendingLessons > 0) " (⏳+${health.pendingLessons})" else "") + snap
         if (!settings.showCostSaved || health.totalRecalls == 0) return "$base lessons$pendingSuffix"
         val costSaved = health.totalRecalls * BrainHealth.TOKENS_PER_RECALL * BrainHealth.COST_PER_TOKEN
         return "$base · ~\$${"%.2f".format(costSaved)} est. saved$pendingSuffix"

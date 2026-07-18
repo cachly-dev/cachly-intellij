@@ -105,10 +105,12 @@ object ProactiveFileBriefing {
         val title = if (risk == "high") "Cachly Brain — high-risk file" else "Cachly Brain — known failure pattern"
         val body = "${if (meta.isNotBlank()) "[$meta] " else ""}${top.message.ifBlank { top.topic }}$more"
 
-        CachlyApiClient.trackEvent("intellij_briefing_shown")
-
         val group = NotificationGroupManager.getInstance()
             .getNotificationGroup("Cachly Brain Ambient") ?: return
+
+        if (!ProactiveBudget.claimInterrupt()) return
+
+        CachlyApiClient.trackEvent("intellij_briefing_shown")
 
         group.createNotification(title, body, NotificationType.WARNING)
             .addAction(NotificationAction.createSimpleExpiring("Show fix") {

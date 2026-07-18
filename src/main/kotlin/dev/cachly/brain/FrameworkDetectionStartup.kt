@@ -46,6 +46,10 @@ class FrameworkDetectionStartup : StartupActivity {
             .getNotificationGroup("Cachly Brain Ambient")
             ?: return
 
+        // Share the one proactive-interrupt budget (quiet mode / rate limit) so
+        // this no longer fires unconditionally on every project open.
+        if (!ProactiveBudget.claimInterrupt()) return
+
         group.createNotification(
             "Cachly Brain — Project Detected",
             "Detected: ${frameworks.joinToString(", ")}. Your Brain is ready with context for this stack.",

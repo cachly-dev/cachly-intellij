@@ -75,6 +75,8 @@ class ProactiveRecallStartup : StartupActivity {
             val group = NotificationGroupManager.getInstance()
                 .getNotificationGroup("Cachly Brain Ambient") ?: return@executeOnPooledThread
 
+            if (!ProactiveBudget.claimInterrupt()) return@executeOnPooledThread
+
             group.createNotification(
                 "Cachly Brain — Ambient Recall",
                 body,

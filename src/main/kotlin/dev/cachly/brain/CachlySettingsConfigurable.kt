@@ -13,6 +13,7 @@ class CachlySettingsConfigurable : Configurable {
     private var showCostSavedBox: JCheckBox? = null
     private var ambientLearningBox: JCheckBox? = null
     private var proactiveBriefingBox: JCheckBox? = null
+    private var quietModeBox: JCheckBox? = null
 
     override fun getDisplayName(): String = "Cachly Brain"
 
@@ -27,6 +28,7 @@ class CachlySettingsConfigurable : Configurable {
         showCostSavedBox = JCheckBox("Show estimated cost saved in status bar", settings.showCostSaved)
         ambientLearningBox = JCheckBox("Ambient learning (suggest saving repeated patterns)", settings.ambientLearning)
         proactiveBriefingBox = JCheckBox("Proactive briefing (top lessons on project open, warnings on risky file open)", settings.proactiveBriefing)
+        quietModeBox = JCheckBox("Quiet mode (no proactive popups — status bar & Brain panel still update)", settings.quietMode)
 
         panel = JPanel().apply {
             layout = BoxLayout(this, BoxLayout.Y_AXIS)
@@ -37,6 +39,7 @@ class CachlySettingsConfigurable : Configurable {
             add(showCostSavedBox!!)
             add(ambientLearningBox!!)
             add(proactiveBriefingBox!!)
+            add(quietModeBox!!)
         }
         return panel!!
     }
@@ -60,7 +63,8 @@ class CachlySettingsConfigurable : Configurable {
                 (intervalField?.value as? Int) != s.refreshIntervalSec ||
                 showCostSavedBox?.isSelected != s.showCostSaved ||
                 ambientLearningBox?.isSelected != s.ambientLearning ||
-                proactiveBriefingBox?.isSelected != s.proactiveBriefing
+                proactiveBriefingBox?.isSelected != s.proactiveBriefing ||
+                quietModeBox?.isSelected != s.quietMode
     }
 
     override fun apply() {
@@ -73,8 +77,15 @@ class CachlySettingsConfigurable : Configurable {
             showCostSaved = showCostSavedBox?.isSelected ?: true,
             ambientLearning = ambientLearningBox?.isSelected ?: true,
             proactiveBriefing = proactiveBriefingBox?.isSelected ?: true,
+            quietMode = quietModeBox?.isSelected ?: false,
             firstHitShown = existing.firstHitShown,
             briefingSuppressed = existing.briefingSuppressed,
+            // Carry the persisted last-good snapshot through a settings save —
+            // rebuilding State() from the form would otherwise reset it to 0.
+            lastGoodLessons = existing.lastGoodLessons,
+            lastGoodTotalRecalls = existing.lastGoodTotalRecalls,
+            lastGoodRecallLimit = existing.lastGoodRecallLimit,
+            lastGoodTokensSaved = existing.lastGoodTokensSaved,
         ))
     }
 
@@ -87,5 +98,6 @@ class CachlySettingsConfigurable : Configurable {
         showCostSavedBox?.isSelected = s.showCostSaved
         ambientLearningBox?.isSelected = s.ambientLearning
         proactiveBriefingBox?.isSelected = s.proactiveBriefing
+        quietModeBox?.isSelected = s.quietMode
     }
 }

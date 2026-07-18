@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "dev.cachly"
-version = "0.6.0"
+version = "0.7.0"
 
 repositories {
     mavenCentral()
@@ -43,6 +43,12 @@ intellijPlatform {
             <p>Works with the Cachly MCP server. Free tier forever &middot; GDPR &middot; EU servers.</p>
         """.trimIndent()
         changeNotes = """
+            <h3>0.7.0</h3>
+            <ul>
+              <li><b>Recall counter survives a restart</b> &mdash; the first health fetch after opening the IDE can run before the network is up (or while the instance is still waking) and come back zeroed. The plugin now persists the last snapshot that actually carried data and shows it (with a &#8635; hint) until a good fetch replaces it, instead of briefly repainting your lessons/recalls as 0. Parity with VS Code 0.12.2.</li>
+              <li><b>Quiet mode</b> &mdash; a new setting that turns off every proactive popup at once (status bar and Brain panel still update).</li>
+              <li><b>One notification budget</b> &mdash; framework detection, the ambient "save this?" prompt, the startup briefing and per-file warnings now share a single budget: at most one popup every 20 minutes, three per session. Framework detection in particular no longer fires unconditionally on every project open.</li>
+            </ul>
             <h3>0.6.0</h3>
             <ul>
               <li><b>Per-file fix hints</b> &mdash; opening a file the Brain knows has a failure pattern now shows a warning with severity and confidence, plus <i>Show fix</i> (full lesson card: outcome, confidence, author, learned date, and the exact tokens that triggered the match), <i>Copy fix</i>, and <i>Not helpful</i> (suppresses that lesson for that file, remembered across restarts). Parity with VS Code 0.12.0.</li>

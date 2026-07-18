@@ -2,6 +2,39 @@
 
 ---
 
+## [0.7.0] – 2026-07-19 — *"Your counter survives a restart"*
+
+### Fixed
+- **Recall counter no longer flickers to zero after a restart.** The first
+  health fetch after opening the IDE can run before the network is up (or while
+  the instance is still waking) and come back zeroed. The plugin now persists
+  the last snapshot that actually carried data (`PersistentStateComponent`) and
+  shows it — with a `⟳` hint in the status bar — until a good fetch replaces it,
+  instead of briefly repainting your lessons/recalls as 0. Parity with the VS
+  Code extension 0.12.2.
+
+### Added
+- **Quiet mode** — a Settings toggle that turns off every proactive popup at
+  once. The status bar and Brain panel keep updating.
+- **One notification budget for the whole plugin.** Framework detection, the
+  ambient "save this?" prompt, the startup briefing and per-file warnings now
+  share a single budget: at most one popup every 20 minutes, three per IDE
+  session. Framework detection in particular no longer fires unconditionally on
+  every project open.
+
+---
+
+## [0.6.0] – 2026-07-15 — *"Explainable fix hints"*
+
+### Added
+- **Per-file fix hints** with provenance — opening a file the Brain knows has a
+  failure pattern shows a warning with severity/confidence plus *Show fix* (full
+  lesson card), *Copy fix*, and *Not helpful* (suppresses that lesson for that
+  file, remembered across restarts). Hint telemetry (shown/opened/copied/
+  not-helpful). Parity with VS Code 0.12.0.
+
+---
+
 ## [0.5.0] – 2026-07-12 — *"Honest metrics"*
 
 ### Changed

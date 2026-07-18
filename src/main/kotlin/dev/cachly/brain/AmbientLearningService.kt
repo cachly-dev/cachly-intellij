@@ -54,6 +54,8 @@ class AmbientLearningService(private val project: Project) {
             .getNotificationGroup("Cachly Brain Ambient")
             ?: return
 
+        if (!ProactiveBudget.claimInterrupt()) return
+
         group.createNotification(
             "Cachly Brain — Save This?",
             "You've typed a similar pattern 3+ times: \"${pattern.take(60)}…\" — save it as a lesson?",

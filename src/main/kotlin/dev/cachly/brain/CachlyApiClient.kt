@@ -93,6 +93,8 @@ data class BrainHealth(
     val recallLimit: Int = -1,
     /** ROI aggregates from /api/v1/insights — null if endpoint unavailable. */
     val insights: InsightsResponse? = null,
+    /** True when the counts are the persisted last-good snapshot, not a fresh fetch. */
+    val showingSnapshot: Boolean = false,
 ) {
     companion object {
         /** Average tokens saved per recall — reuses known solution instead of re-researching. */
@@ -118,7 +120,7 @@ object CachlyApiClient {
 
         // 1. Fetch instance info
         val instJson = httpGet("$baseUrl/api/v1/instances/$id", settings.apiKey)
-            ?: return BrainHealth(status = "unreachable")
+            ?: return applyColdStartGuard(BrainHealth(status = "unreachable"))
         val inst = gson.fromJson(instJson, InstanceResponse::class.java)
 
         // 2. Fetch memory stats
@@ -135,7 +137,7 @@ object CachlyApiClient {
         // 3. Fetch tenant-level ROI insights (best-effort — null if unavailable)
         val insights = fetchInsights(baseUrl, settings.apiKey)
 
-        return BrainHealth(
+        return applyColdStartGuard(BrainHealth(
             lessons = mem.lessonCount,
             contexts = mem.contextCount,
             totalRecalls = totalRecalls,
@@ -154,6 +156,33 @@ object CachlyApiClient {
             pendingLessons = pendingCount,
             recallLimit = mem.recallLimit,
             insights = insights,
+        ))
+    }
+
+    /**
+     * Cold-start guard: persist the last snapshot that carried data, and when a
+     * fetch comes back empty-handed (network still down after a restart, the
+     * instance still waking, transient zeroed stats) show that snapshot instead
+     * of repainting real counters as 0. Mirrors the VS Code extension (0.12.2).
+     */
+    private fun applyColdStartGuard(health: BrainHealth): BrainHealth {
+        val settings = CachlySettings.getInstance().state
+        if (health.lessons > 0 || health.totalRecalls > 0) {
+            settings.lastGoodLessons = health.lessons
+            settings.lastGoodTotalRecalls = health.totalRecalls
+            settings.lastGoodRecallLimit = health.recallLimit
+            settings.lastGoodTokensSaved = health.estimatedTokensSaved
+            return health
+        }
+        val snapshotHasData = settings.lastGoodLessons > 0 || settings.lastGoodTotalRecalls > 0
+        if (!snapshotHasData) return health
+        return health.copy(
+            lessons = settings.lastGoodLessons,
+            totalRecalls = settings.lastGoodTotalRecalls,
+            recallLimit = settings.lastGoodRecallLimit,
+            estimatedTokensSaved = settings.lastGoodTokensSaved,
+            status = if (health.status == "unreachable") "unreachable" else "degraded",
+            showingSnapshot = true,
         )
     }
 
