@@ -2,6 +2,31 @@
 
 ---
 
+## [0.7.2] – 2026-08-13 — *"Marketplace housekeeping, no code change"*
+
+### Fixed
+- **License claim corrected.** The README said "MIT" in the License section while
+  showing an Apache-2.0 badge at the top; the plugin actually ships under the
+  Elastic License 2.0, the same license as the rest of the cachly repository. Both
+  now say Elastic License 2.0, and a copy of the license file lives in this folder
+  too, so the mirrored public repo has something to link to instead of a broken
+  `../../LICENSE` path.
+- **Release notes no longer go stale.** `changeNotes` in `build.gradle.kts` was a
+  hand-copied string that fell out of sync with every release — 0.7.1 shipped with
+  no notes at all because nobody remembered to update both places. The build now
+  reads the topmost section of this file and turns it into the notes shown on the
+  Marketplace, so the two cannot drift apart again.
+- **Compatibility check now actually runs before publishing.** `verifyPlugin` was
+  configured but only wired into a workflow GitHub never runs from this repo.
+  `intellij-publish.yml` now runs it as a required step before `publishPlugin`, so
+  an incompatible build blocks the release instead of reaching the Marketplace.
+
+### Added
+- **Dark-theme plugin icon** (`pluginIcon_dark.svg`) — same mark as the existing
+  light icon, in colors readable on a dark IDE background.
+
+---
+
 ## [0.7.1] – 2026-08-12 — *"Compatibility restored"*
 
 ### Fixed

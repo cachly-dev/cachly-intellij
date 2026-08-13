@@ -20,7 +20,9 @@
     <img src="https://img.shields.io/badge/Free%20Brain-%E2%82%AC0%2Fmo%20forever-brightgreen" alt="Free Brain" />
   </a>
   &nbsp;
-  <img src="https://img.shields.io/badge/License-Apache--2.0-yellow" alt="License" />
+  <a href="LICENSE">
+    <img src="https://img.shields.io/badge/License-Elastic--2.0-blue" alt="License" />
+  </a>
 </p>
 
 <p align="center">
@@ -115,4 +117,4 @@ cd sdk/intellij
 
 ## License
 
-MIT — see [LICENSE](../../LICENSE)
+[Elastic License 2.0](LICENSE) — same terms as the rest of the cachly repository.

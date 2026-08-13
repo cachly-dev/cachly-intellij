@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "dev.cachly"
-version = "0.7.1"
+version = "0.7.2"
 
 repositories {
     mavenCentral()
@@ -20,6 +20,60 @@ dependencies {
         instrumentationTools()
     }
     implementation("com.google.code.gson:gson:2.11.0")
+}
+
+/**
+ * Reads the topmost `## [x.y.z]` section of CHANGELOG.md and turns it into the
+ * simple HTML the JetBrains Marketplace expects for `changeNotes`, so the notes
+ * can no longer drift out of sync with this file the way a hand-copied string did.
+ */
+fun changeNotesFromChangelog(): String {
+    val changelog = file("CHANGELOG.md").readText()
+    val header = Regex("""^## \[(.+?)\].*$""", RegexOption.MULTILINE)
+    val matches = header.findAll(changelog).toList()
+    check(matches.isNotEmpty()) { "CHANGELOG.md has no '## [version]' section to read change notes from." }
+
+    val top = matches[0]
+    val entryVersion = top.groupValues[1]
+    val bodyStart = top.range.last + 1
+    val bodyEnd = if (matches.size > 1) matches[1].range.first else changelog.length
+    val body = changelog.substring(bodyStart, bodyEnd)
+
+    val items = mutableListOf<String>()
+    var current: StringBuilder? = null
+    for (raw in body.lines()) {
+        val line = raw.trim()
+        when {
+            line.startsWith("- ") -> {
+                current?.let { items += it.toString() }
+                current = StringBuilder(line.removePrefix("- ").trim())
+            }
+            line.isEmpty() || line.startsWith("#") || line.startsWith("---") -> {
+                current?.let { items += it.toString() }
+                current = null
+            }
+            else -> current?.append(' ')?.append(line)
+        }
+    }
+    current?.let { items += it.toString() }
+
+    fun toHtml(text: String): String {
+        var html = text
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace("—", "&mdash;")
+        html = Regex("""\*\*(.+?)\*\*""").replace(html) { "<b>${it.groupValues[1]}</b>" }
+        html = Regex("`([^`]+)`").replace(html) { "<code>${it.groupValues[1]}</code>" }
+        return html
+    }
+
+    return buildString {
+        append("<h3>").append(entryVersion).append("</h3>\n")
+        append("<ul>\n")
+        items.forEach { append("  <li>").append(toHtml(it)).append("</li>\n") }
+        append("</ul>")
+    }
 }
 
 intellijPlatform {
@@ -42,60 +96,7 @@ intellijPlatform {
             </ul>
             <p>Works with the Cachly MCP server. Free tier forever &middot; GDPR &middot; EU servers.</p>
         """.trimIndent()
-        changeNotes = """
-            <h3>0.7.0</h3>
-            <ul>
-              <li><b>Recall counter survives a restart</b> &mdash; the first health fetch after opening the IDE can run before the network is up (or while the instance is still waking) and come back zeroed. The plugin now persists the last snapshot that actually carried data and shows it (with a &#8635; hint) until a good fetch replaces it, instead of briefly repainting your lessons/recalls as 0. Parity with VS Code 0.12.2.</li>
-              <li><b>Quiet mode</b> &mdash; a new setting that turns off every proactive popup at once (status bar and Brain panel still update).</li>
-              <li><b>One notification budget</b> &mdash; framework detection, the ambient "save this?" prompt, the startup briefing and per-file warnings now share a single budget: at most one popup every 20 minutes, three per session. Framework detection in particular no longer fires unconditionally on every project open.</li>
-            </ul>
-            <h3>0.6.0</h3>
-            <ul>
-              <li><b>Per-file fix hints</b> &mdash; opening a file the Brain knows has a failure pattern now shows a warning with severity and confidence, plus <i>Show fix</i> (full lesson card: outcome, confidence, author, learned date, and the exact tokens that triggered the match), <i>Copy fix</i>, and <i>Not helpful</i> (suppresses that lesson for that file, remembered across restarts). Parity with VS Code 0.12.0.</li>
-              <li><b>Hint telemetry</b> &mdash; anonymous shown/opened/copied/not-helpful events so hint quality becomes measurable.</li>
-            </ul>
-            <h3>0.4.0</h3>
-            <ul>
-              <li><b>Proactive briefing</b> &mdash; on project open the plugin now surfaces your Brain's top lessons as a notification (push-based recall), instead of waiting for "Show Lessons". Opt-out in Settings.</li>
-              <li><b>Cross-harness rules files</b> &mdash; "Set Up AI Files" now also writes <code>.cursor/rules/cachly.mdc</code>, <code>.windsurfrules</code> and <code>.clinerules</code>, so Cursor, Windsurf and Cline get the Brain protocol too.</li>
-            </ul>
-            <h3>0.3.3</h3>
-            <ul>
-              <li><b>Fix:</b> the Settings panel crashed on IntelliJ 2024.1 with <code>UnsupportedClassVersionError</code> &mdash; the plugin was compiled for Java 21 while 2024.1 runs on Java 17. Now targets Java 17 across the full 2024.1&ndash;2025.2 range.</li>
-            </ul>
-            <h3>0.3.2</h3>
-            <ul>
-              <li><b>CI auto-detection</b> &mdash; "Set Up AI Files" detects your git remote (GitHub or GitLab) and scaffolds the matching CI config: a GitHub Actions workflow or a GitLab CI/CD include. Idempotent and non-destructive.</li>
-            </ul>
-            <h3>0.3.1</h3>
-            <ul>
-              <li>Version alignment with MCP server 0.10.103 and VS Code extension 0.9.6</li>
-              <li>Compatible with <code>brain_confirm_ci</code> tool for CI self-calibration</li>
-            </ul>
-            <h3>0.3.0</h3>
-            <ul>
-              <li>New <b>"Set Up AI Files"</b> action: one-click MCP config, agent instructions (CLAUDE.md, AGENTS.md, copilot-instructions), and a git post-commit learning hook</li>
-              <li>New <b>"Run Brain Doctor"</b> action: diagnoses API key, instance ID, and network connectivity with a jump to settings</li>
-              <li>JSONC-tolerant <code>.mcp.json</code> merge that preserves your other MCP servers</li>
-            </ul>
-            <h3>0.2.2</h3>
-            <ul>
-              <li>Team Brain awareness: lesson count with author attribution in Brain Health dialog</li>
-              <li>brain_doctor: IQ Boost % and Crystal freshness in Brain Health panel</li>
-              <li>💎 Memory Crystal indicator in status bar when Crystal is loaded</li>
-            </ul>
-            <h3>0.2.0</h3>
-            <ul>
-              <li>Added dedicated &quot;Show Lessons&quot; action (Tools menu) with full what-worked content and scrollable list</li>
-              <li>Lessons viewer shows all lessons with severity, recall count, and date</li>
-            </ul>
-            <h3>0.1.0</h3>
-            <ul>
-              <li>Initial release</li>
-              <li>Status bar brain health widget</li>
-              <li>Brain health overview with recall stats and token savings</li>
-            </ul>
-        """.trimIndent()
+        changeNotes = changeNotesFromChangelog()
         ideaVersion {
             sinceBuild = "241"
             untilBuild = provider { null }
