@@ -124,7 +124,15 @@ intellijPlatform {
 
     pluginVerification {
         ides {
-            recommended()
+            // NICHT recommended(): das fragt bei jedem Lauf einen
+            // JetBrains-Webdienst, welche IDEs zu pruefen sind — am
+            // 13.08.2026 empfahl der 2025.3, deren ideaIC-Artefakt unter
+            // keiner Repository-Adresse aufloesbar war, und der Spiegel-CI
+            // (cachly-intellij) war rot, ohne dass sich am Plugin etwas
+            // geaendert hatte. Fest gepinnt auf die Grenzen des erklaerten
+            // Support-Bereichs (sinceBuild 241, s. Changelog "241-252").
+            ide(org.jetbrains.intellij.platform.gradle.IntelliJPlatformType.IntellijIdeaCommunity, "2024.1")
+            ide(org.jetbrains.intellij.platform.gradle.IntelliJPlatformType.IntellijIdeaCommunity, "2025.2")
         }
     }
 }
