@@ -2,6 +2,17 @@
 
 ---
 
+## [0.7.1] – 2026-08-12 — *"Compatibility restored"*
+
+### Fixed
+- **Plugin works on IDEs after 2025.2.** The version 0.7.0 had a hard compatibility
+  limit (untilBuild) that silently deactivated the plugin on IntelliJ IDEA 2025.3+
+  and all newer JetBrains IDEs. This was not a functional change — the code ran
+  unchanged — but users saw the plugin greyed out on IDE update. Fixed by removing
+  the hard limit.
+
+---
+
 ## [0.7.0] – 2026-07-19 — *"Your counter survives a restart"*
 
 ### Fixed
