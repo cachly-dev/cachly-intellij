@@ -114,8 +114,6 @@ private class LessonsDialog(
         return panel
     }
 
-    private fun escHtml(s: String) = s
-        .replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
     private fun formatDate(ts: String?): String {
         if (ts.isNullOrBlank()) return "—"

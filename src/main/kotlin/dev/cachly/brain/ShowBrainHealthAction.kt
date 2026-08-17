@@ -60,6 +60,24 @@ private class BrainHealthDialog(
             }
         } else null
 
+        // ── Hinweis vom Server ──────────────────────────────────────────
+        //
+        // Bis zum 17.08.2026 zeigte diesen Satz NUR der MCP-Server. Wer cachly
+        // ueber dieses Fenster benutzt und nicht ueber einen Agenten, sah ihn
+        // nie — auch nicht die Warnung, dass sein Schluessel nur in dieser IDE
+        // liegt und ein neuer Rechner bei null anfaengt.
+        //
+        // Er steht UEBER dem Offline-Banner: Ein paar ungesendete Lektionen
+        // holen sich von selbst nach, ein verlorener Schluessel nicht.
+        val noticeBanner: JComponent? = health.notice?.takeIf { it.isNotBlank() }?.let { text ->
+            JLabel("<html><body style='padding:6px;'>" + escHtml(text) + "</body></html>").also {
+                it.border = javax.swing.BorderFactory.createLineBorder(
+                    com.intellij.ui.JBColor(java.awt.Color(0x4a, 0x90, 0xd9), java.awt.Color(0x2a, 0x54, 0x7d)))
+                it.isOpaque = true
+                it.background = com.intellij.ui.JBColor(java.awt.Color(0xe8, 0xf2, 0xfb), java.awt.Color(0x1b, 0x2a, 0x3a))
+            }
+        }
+
         // ── Summary table ───────────────────────────────────────────────
         // Limited tiers report a MONTHLY recall counter, unlimited tiers all-time.
         val monthly = health.recallLimit > 0
@@ -176,11 +194,18 @@ private class BrainHealthDialog(
         val helpLabel = JLabel(helpHtml)
 
         // ── Layout ──────────────────────────────────────────────────────
-        if (pendingBanner != null) {
-            val north = JPanel(BorderLayout(0, 8))
-            north.add(pendingBanner, BorderLayout.NORTH)
-            north.add(summaryLabel, BorderLayout.CENTER)
-            panel.add(north, BorderLayout.NORTH)
+        val banner = listOfNotNull(noticeBanner, pendingBanner)
+        if (banner.isNotEmpty()) {
+            // Von aussen nach innen stapeln, damit die Reihenfolge stimmt:
+            // Hinweis oben, danach der Offline-Hinweis, dann die Zahlen.
+            var inhalt: JComponent = summaryLabel
+            for (b in banner.asReversed()) {
+                val huelle = JPanel(BorderLayout(0, 8))
+                huelle.add(b, BorderLayout.NORTH)
+                huelle.add(inhalt, BorderLayout.CENTER)
+                inhalt = huelle
+            }
+            panel.add(inhalt, BorderLayout.NORTH)
         } else {
             panel.add(summaryLabel, BorderLayout.NORTH)
         }

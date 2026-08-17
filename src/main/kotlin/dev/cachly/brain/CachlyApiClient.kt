@@ -32,6 +32,15 @@ data class MemoryResponse(
     @SerializedName("memory_used_pct") val memoryUsedPct: Double = 0.0,
     @SerializedName("total_recall_count") val totalRecallCount: Long = 0,
     @SerializedName("recall_limit") val recallLimit: Int = -1,
+    /**
+     * Ein Satz vom Server an den Menschen hinter dieser Instanz.
+     *
+     * Den Kanal gibt es seit dem 13.08.2026, angezeigt hat ihn bis zum
+     * 17.08. NUR der MCP-Server. Wer cachly ueber dieses Plugin benutzt und
+     * nicht ueber einen Agenten, hat ihn nie gesehen — auch nicht die Warnung,
+     * dass sein Schluessel nur in dieser IDE liegt.
+     */
+    val notice: String? = null,
     @SerializedName("iq_boost_pct") val iqBoostPct: Double = 0.0,
     @SerializedName("team_authors") val teamAuthors: List<String> = emptyList(),
     val crystal: MemoryCrystal? = null,
@@ -140,6 +149,8 @@ data class BrainHealth(
     val insights: InsightsResponse? = null,
     /** True when the counts are the persisted last-good snapshot, not a fresh fetch. */
     val showingSnapshot: Boolean = false,
+    /** Ein Satz vom Server — siehe MemoryResponse.notice. Leer = nichts anliegend. */
+    val notice: String? = null,
 ) {
     companion object {
         /** Average tokens saved per recall — reuses known solution instead of re-researching. */
@@ -223,6 +234,7 @@ object CachlyApiClient {
             pendingLessons = pendingCount,
             recallLimit = mem.recallLimit,
             insights = insights,
+            notice = mem.notice?.takeIf { it.isNotBlank() },
         ))
     }
 
