@@ -2,6 +2,39 @@
 
 ---
 
+## [0.8.0] – 2026-08-17 — *"The plugin can finally get you a key"*
+
+### Added
+- **First start now gets you a brain by itself.** Until this release the plugin
+  offered exactly one way in: an empty API-key field in Settings. If you had no
+  key, it fetched health once, saw "not healthy", and returned in silence —
+  nothing asked you to sign up and nothing showed you where. Measured on
+  2026-08-17: 18 Marketplace downloads, zero registrations. The plugin now does
+  what the VS Code extension has done for weeks:
+  1. asks the API for a free trial brain — no account, no credit card, no key to
+     paste;
+  2. falls back to browser approval (device flow) if you already have an account;
+  3. and if both are unreachable, says so on screen with buttons for the
+     dashboard and the settings. There is no longer a path that ends in silence.
+- **"Connect Brain" in the Tools menu.** Reachable on purpose, not only as a
+  side effect of opening a project — for anyone who dismissed the prompt, changed
+  machines, or cleared their settings.
+- **Screenshots on the Marketplace page.** Three promo images had been sitting in
+  the repository since 2026-08-11, publicly reachable, and linked from nowhere.
+  A page selling a visual tool showed not a single picture of it.
+
+### Fixed
+- **The plugin now says who it is.** Every request carries a
+  `cachly-intellij/<version>` User-Agent. It sent none before, so nothing on the
+  server side could tell whether the plugin had ever called the API at all —
+  the one measurement that would have shown the missing onboarding months
+  earlier.
+- **Stale version in the README.** The build section named
+  `cachly-brain-0.2.0.zip` while the plugin was at 0.7.2. The filename no longer
+  carries a hand-typed number.
+
+---
+
 ## [0.7.2] – 2026-08-13 — *"Marketplace housekeeping, no code change"*
 
 ### Fixed

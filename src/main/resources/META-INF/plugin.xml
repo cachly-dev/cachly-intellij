@@ -3,8 +3,13 @@
     <name>Cachly Brain</name>
     <vendor email="support@cachly.dev" url="https://cachly.dev">Cachly</vendor>
     <description><![CDATA[
-        <p>AI Brain for <a href="https://cachly.dev">Cachly</a> — ambient learning, cost savings tracker, framework detection, zero-config setup.</p>
-        <p>Shows lesson count and estimated cost saved in the status bar. Detects repeated typing patterns and offers to save them as Brain lessons. Click the status bar widget to see all learned lessons with details.</p>
+        <p><b>ChatGPT and Claude remember your conversations. <a href="https://cachly.dev">cachly</a> remembers your
+        codebase.</b> The bug you fixed. Why you chose Postgres. The deploy step that always breaks — and everything
+        your teammates learned.</p>
+        <p><b>Free, and you can try it without an account</b> — on first start the plugin fetches a trial brain by
+        itself. Nothing to sign up for, no key to paste. EU servers, GDPR.</p>
+        <p>Shows lesson count and estimated cost saved in the status bar. Detects repeated patterns and offers to save
+        them as lessons. Click the status bar widget to see every learned lesson with details.</p>
     ]]></description>
 
     <depends>com.intellij.modules.platform</depends>
@@ -35,6 +40,12 @@
     </extensions>
 
     <actions>
+        <action id="Cachly.ConnectBrain"
+                class="dev.cachly.brain.ConnectBrainAction"
+                text="Connect Brain"
+                description="Get a Cachly Brain key — trial without an account, or link an existing one">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
         <action id="Cachly.ShowBrainHealth"
                 class="dev.cachly.brain.ShowBrainHealthAction"
                 text="Show Brain Health"

@@ -20,6 +20,20 @@ class CachlySettings : PersistentStateComponent<CachlySettings.State> {
         var quietMode: Boolean = false,
         var firstHitShown: Boolean = false,
         /**
+         * End of a trial obtained via instant-trial, as sent by the API in
+         * `trial_ends_at`. Empty for a linked account.
+         */
+        var trialEndsAt: String = "",
+        /**
+         * How often the plugin has tried to fetch a key on its own without ever
+         * succeeding. Capped in CachlyOnboarding: if the API answers but storing
+         * the key fails for some reason, an uncapped retry would create a fresh
+         * trial instance on every single project open.
+         */
+        var onboardingAttempts: Int = 0,
+        /** True once the user has explicitly dismissed the connect prompt. */
+        var onboardingDeclined: Boolean = false,
+        /**
          * "Not helpful" suppressions for per-file briefings, keyed
          * "relPath::topic" -> epoch millis. Capped at 300 (oldest evicted).
          */

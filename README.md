@@ -1,7 +1,11 @@
 # 🧠 Your AI Brain, Visible Inside IntelliJ
 
-> **Your AI forgets everything when the IDE closes. This plugin makes it remember — and shows you proof.**  
-> See your AI assistant's memory at a glance: lessons learned, tokens saved, session history, and brain health — right in your IDE's status bar. Works in every JetBrains IDE.
+> **ChatGPT and Claude remember your conversations. cachly remembers your codebase.**  
+> The bug you fixed. Why you chose Postgres. The deploy step that always breaks — and everything your teammates learned. It stays when someone leaves the team, and it comes along when you switch assistants.
+>
+> **This plugin puts that memory in front of you** — lessons learned, tokens saved, session history and brain health, right in your IDE's status bar. Works in every JetBrains IDE.
+>
+> **Nothing to sign up for.** On first start the plugin fetches a free trial brain by itself — no account, no credit card, no key to paste. Link an account later to keep the data. EU servers, GDPR.
 
 <p align="center">
   <a href="https://plugins.jetbrains.com/plugin/32059-cachly-brain">
@@ -29,6 +33,15 @@
   <a href="https://cachly.dev?utm_source=jetbrains-marketplace&utm_medium=readme&utm_campaign=plugin-cta">
     <img src="https://img.shields.io/badge/%E2%96%B6_Get_Your_Free_Brain-cachly.dev-7c3aed?style=for-the-badge" alt="Get Free Brain" />
   </a>
+</p>
+
+<p align="center">
+  <img src="https://cachly.dev/screenshots/intellij/shot1-hero.png" alt="Cachly Brain in a JetBrains IDE: status bar with lesson count, briefing on project open" width="720" />
+</p>
+<p align="center">
+  <img src="https://cachly.dev/screenshots/intellij/shot3-lessons.png" alt="Lesson viewer: every learned lesson with recall count and severity" width="720" />
+  <br />
+  <img src="https://cachly.dev/screenshots/intellij/shot2-doctor.png" alt="Brain Doctor: checks API key, instance and network, and names the fix" width="720" />
 </p>
 
 ---
@@ -103,7 +116,11 @@ The plugin is free. It connects to your cachly Brain instance:
 ```bash
 cd sdk/intellij
 ./gradlew buildPlugin
-# Output: build/distributions/cachly-brain-0.2.0.zip
+# Ergebnis: build/distributions/cachly-brain-<version>.zip
+# Die Version kommt aus build.gradle.kts. Hier stand bis zum 17.08.2026 eine
+# feste 0.2.0, waehrend das Plugin bei 0.7.2 war — eine Zahl an zwei Orten
+# gepflegt laeuft immer auseinander, und eine veraltete liest sich wie ein
+# verlassenes Projekt.
 ```
 
 ---
@@ -113,7 +130,8 @@ cd sdk/intellij
 - [cachly.dev](https://cachly.dev) — Dashboard & free signup
 - [AI Brain docs](https://cachly.dev/docs/ai-memory) — MCP server setup
 - [MCP Server npm](https://www.npmjs.com/package/@cachly-dev/mcp-server) — The brain backend
-- [VS Code Extension](https://marketplace.visualstudio.com/items?itemName=cachly-dev.cachly-brain)
+- [VS Code Extension](https://marketplace.visualstudio.com/items?itemName=cachly-dev.cachly-brain) — same brain, same trial, for VS Code
+- [Blog](https://cachly.dev/blog) — how we build this, including the mistakes
 
 ## License
 

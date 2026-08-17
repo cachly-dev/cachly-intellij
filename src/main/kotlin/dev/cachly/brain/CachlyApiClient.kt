@@ -37,6 +37,51 @@ data class MemoryResponse(
     val crystal: MemoryCrystal? = null,
 )
 
+/**
+ * Answer of POST /auth/instant-trial — the zero-click onboarding path.
+ *
+ * Field names verified against the live API on 2026-08-17: api_key,
+ * instance_id, message, trial, trial_ends_at. The VS Code extension read
+ * `expires_at` here for weeks, which silently disabled its whole
+ * trial-expiry warning — so this type carries the name the server
+ * actually sends.
+ */
+data class InstantTrialResponse(
+    @SerializedName("api_key") val apiKey: String = "",
+    @SerializedName("instance_id") val instanceId: String = "",
+    val trial: Boolean = false,
+    @SerializedName("trial_ends_at") val trialEndsAt: String? = null,
+    val message: String? = null,
+)
+
+/**
+ * Answer of POST /auth/device (RFC 8628 device authorization).
+ *
+ * Verified against the live API on 2026-08-17: device_code, user_code,
+ * verification_uri, expires_in=600, interval=5.
+ */
+data class DeviceCodeResponse(
+    @SerializedName("device_code") val deviceCode: String = "",
+    @SerializedName("user_code") val userCode: String = "",
+    @SerializedName("verification_uri") val verificationUri: String = "https://cachly.dev/device",
+    @SerializedName("expires_in") val expiresIn: Int = 600,
+    val interval: Int = 5,
+)
+
+/**
+ * Answer of POST /auth/device/token.
+ *
+ * CAREFUL: while the user has not approved yet, this endpoint answers
+ * HTTP 200 with {"error":"authorization_pending"} — not an HTTP error status.
+ * Treating a non-200 as "still waiting" would therefore poll forever, and
+ * treating any 200 as success would store an empty key.
+ */
+data class DeviceTokenResponse(
+    @SerializedName("access_token") val accessToken: String? = null,
+    @SerializedName("instance_id") val instanceId: String? = null,
+    val error: String? = null,
+)
+
 data class InstanceResponse(
     val tier: String? = null,
     val status: String? = null,
@@ -106,6 +151,28 @@ data class BrainHealth(
 }
 
 object CachlyApiClient {
+
+    /**
+     * Sent on every request so the server can tell IntelliJ traffic apart from
+     * VS Code and the CLI.
+     *
+     * Until 2026-08-17 this plugin sent no User-Agent at all. That is not
+     * cosmetic: with 18 marketplace downloads and zero registrations, there was
+     * no way to see from the server side whether the plugin ever called the API
+     * — the one measurement that would have shown the missing onboarding
+     * months earlier.
+     *
+     * Read from the plugin descriptor so it cannot drift away from the shipped
+     * version, with a literal fallback for unit tests that run without an IDE.
+     */
+    val USER_AGENT: String by lazy {
+        val v = try {
+            com.intellij.ide.plugins.PluginManagerCore
+                .getPlugin(com.intellij.openapi.extensions.PluginId.getId("dev.cachly.brain"))
+                ?.version
+        } catch (_: Throwable) { null }
+        "cachly-intellij/${v ?: "dev"}"
+    }
 
     private val gson = Gson()
 
@@ -283,6 +350,7 @@ object CachlyApiClient {
             conn.readTimeout = 3000
             conn.doOutput = true
             conn.setRequestProperty("Content-Type", "application/json")
+            conn.setRequestProperty("User-Agent", USER_AGENT)
             conn.outputStream.bufferedWriter().use { it.write(body) }
             conn.responseCode // drain — telemetry must never break UX
         } catch (_: Exception) { /* silently ignore */ }
@@ -295,10 +363,84 @@ object CachlyApiClient {
             conn.readTimeout = 5000
             conn.setRequestProperty("Authorization", "Bearer $apiKey")
             conn.setRequestProperty("Accept", "application/json")
+            conn.setRequestProperty("User-Agent", USER_AGENT)
             if (conn.responseCode == 200) {
                 conn.inputStream.bufferedReader().readText()
             } else null
         } catch (_: Exception) { null }
+    }
+
+    /**
+     * Fetches a trial Brain without asking the user for anything.
+     *
+     * WHY THIS EXISTS (measured 2026-08-17): the plugin had 18 marketplace
+     * downloads and produced zero registrations. It offered exactly one way
+     * in — an empty API-key field in the settings dialog — and on first start
+     * without a key it fetched health, saw "not healthy" and returned in
+     * silence. Nothing asked the user to sign up, and nothing showed them
+     * where. The VS Code extension has had this endpoint wired for weeks;
+     * this plugin never did.
+     *
+     * Returns null on any failure. A failed onboarding attempt must never
+     * throw into IDE startup.
+     */
+    fun requestInstantTrial(): InstantTrialResponse? {
+        val raw = httpPostAnon("${apiBase()}/auth/instant-trial", "{}") ?: return null
+        return try {
+            val parsed = Gson().fromJson(raw, InstantTrialResponse::class.java)
+            if (parsed?.apiKey.isNullOrBlank()) null else parsed
+        } catch (_: Exception) { null }
+    }
+
+    /**
+     * POST without credentials. Onboarding happens BEFORE a key exists, so the
+     * authenticated helper below cannot be reused: it would send
+     * "Authorization: Bearer " and the API would reject it.
+     *
+     * Accepts 200 and 201 — the trial endpoint answers 201 Created, and
+     * checking only for 200 would have made this silently useless.
+     */
+    private fun httpPostAnon(url: String, body: String): String? {
+        return try {
+            val conn = URI(url).toURL().openConnection() as HttpURLConnection
+            conn.requestMethod = "POST"
+            conn.connectTimeout = 8000
+            conn.readTimeout = 8000
+            conn.doOutput = true
+            conn.setRequestProperty("Content-Type", "application/json")
+            conn.setRequestProperty("Accept", "application/json")
+            conn.setRequestProperty("User-Agent", USER_AGENT)
+            conn.outputStream.bufferedWriter().use { it.write(body) }
+            if (conn.responseCode in 200..201) {
+                conn.inputStream.bufferedReader().readText()
+            } else null
+        } catch (_: Exception) { null }
+    }
+
+    /** Configured API root without a trailing slash, falling back to production. */
+    private fun apiBase(): String =
+        CachlySettings.getInstance().state.apiUrl.trimEnd('/').ifBlank { "https://api.cachly.dev" }
+
+    /** Starts the device flow. Returns null if the endpoint is unreachable. */
+    fun requestDeviceCode(): DeviceCodeResponse? {
+        val raw = httpPostAnon("${apiBase()}/auth/device", "{}") ?: return null
+        return try {
+            val parsed = Gson().fromJson(raw, DeviceCodeResponse::class.java)
+            if (parsed?.deviceCode.isNullOrBlank() || parsed?.userCode.isNullOrBlank()) null else parsed
+        } catch (_: Exception) { null }
+    }
+
+    /**
+     * Asks once whether the user has approved the device code yet.
+     *
+     * Returns null when the answer could not be read at all (network glitch) —
+     * the caller keeps waiting. A parsed answer with error="authorization_pending"
+     * is a normal "not yet", NOT a failure.
+     */
+    fun pollDeviceToken(deviceCode: String): DeviceTokenResponse? {
+        val body = Gson().toJson(mapOf("device_code" to deviceCode))
+        val raw = httpPostAnon("${apiBase()}/auth/device/token", body) ?: return null
+        return try { Gson().fromJson(raw, DeviceTokenResponse::class.java) } catch (_: Exception) { null }
     }
 
     private fun httpPost(url: String, apiKey: String, body: String): String? {
@@ -311,6 +453,7 @@ object CachlyApiClient {
             conn.setRequestProperty("Authorization", "Bearer $apiKey")
             conn.setRequestProperty("Content-Type", "application/json")
             conn.setRequestProperty("Accept", "application/json")
+            conn.setRequestProperty("User-Agent", USER_AGENT)
             conn.outputStream.bufferedWriter().use { it.write(body) }
             if (conn.responseCode == 200) conn.inputStream.bufferedReader().readText() else null
         } catch (_: Exception) { null }

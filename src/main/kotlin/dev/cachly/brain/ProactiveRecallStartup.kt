@@ -32,6 +32,17 @@ class ProactiveRecallStartup : StartupActivity {
         // takes effect without a restart.
         ProactiveFileBriefing.install(project)
 
+        // No key means nothing below can work: fetchHealth would answer
+        // "not healthy" and every branch after it returns in silence. Until
+        // 2026-08-17 that silence WAS the first-run experience — 18 downloads,
+        // zero registrations. Onboarding therefore runs before the briefing and
+        // independently of the proactiveBriefing toggle, which is about popups
+        // for an already-connected Brain, not about getting connected at all.
+        if (CachlyOnboarding.needsKey()) {
+            CachlyOnboarding.maybeOnboard(project)
+            return
+        }
+
         if (!CachlySettings.getInstance().state.proactiveBriefing) return
 
         ApplicationManager.getApplication().executeOnPooledThread {

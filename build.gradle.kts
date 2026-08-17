@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "dev.cachly"
-version = "0.7.2"
+version = "0.8.0"
 
 repositories {
     mavenCentral()
@@ -81,11 +81,32 @@ intellijPlatform {
         id = "dev.cachly.brain"
         name = "Cachly Brain"
         version = project.version.toString()
+        // MARKETPLACE-TEXT — DIESE ERKLAERUNGEN GEHOEREN HIERHIN, NICHT IN DEN TEXT.
+        //
+        // Sie standen zuerst als <!-- ... --> im description-String. Das laeuft
+        // mit aus: HTML-Kommentare landen im Paket und damit im Quelltext der
+        // oeffentlichen Marketplace-Seite. Eine Begruendung fuer uns hat auf einer
+        // Verkaufsseite nichts zu suchen.
+        //
+        // (1) Die Kernaussage ist dieselbe wie auf der Startseite
+        //     (web/lib/i18n/landing.ts, hero). Vorher stand hier eine eigene
+        //     Fassung. Die Startseite arbeitet mit einem Gegensatz statt mit einer
+        //     Klage und nennt drei konkrete Dinge; sie ist die staerkere Aussage,
+        //     und wer von cachly.dev kommt, erkennt sie wieder. Eine Kernaussage
+        //     an drei Orten in drei Fassungen ist derselbe Fehler wie eine
+        //     Versionsnummer an zwei Orten.
+        //
+        // (2) Die drei Bilder lagen seit dem 11.08.2026 im Repo und waren unter
+        //     cachly.dev oeffentlich erreichbar — verlinkt von nirgendwo. 18
+        //     Downloads, null Registrierungen, auf einer Verkaufsseite ohne ein
+        //     einziges Bild. JetBrains braucht ABSOLUTE Adressen; relative
+        //     Repo-Pfade zeigen nichts an. Alle drei am 17.08.2026 mit HTTP 200
+        //     und image/png geprueft.
         description = """
-            <p>Your AI assistant is brilliant for one session &mdash; then it forgets everything.
-            Every day you re-explain your architecture, your deploy steps, the bug you already fixed.
-            <a href="https://cachly.dev">Cachly</a> gives your AI a permanent, shared brain that learns from
-            every commit and gets smarter over time. This plugin brings that brain into your JetBrains IDE.</p>
+            <p><b>ChatGPT and Claude remember your conversations. <a href="https://cachly.dev">cachly</a> remembers your codebase.</b></p>
+            <p>The bug you fixed. Why you chose Postgres. The deploy step that always breaks &mdash; and everything
+            your teammates learned. It stays when someone leaves the team, and it comes along when you switch
+            assistants. This plugin brings that memory into your JetBrains IDE.</p>
             <ul>
               <li><b>One-click setup</b> &mdash; "Set Up AI Files" writes your MCP config, agent instructions, and a git post-commit learning hook. No terminal needed.</li>
               <li><b>Brain Doctor</b> &mdash; diagnoses your connection (API key, instance, network) and points you straight to the fix.</li>
@@ -94,6 +115,11 @@ intellijPlatform {
               <li><b>Status bar widget</b> &mdash; live lesson count, brain health, and estimated tokens saved.</li>
               <li><b>Lesson viewer</b> &mdash; browse every learned lesson with recall counts and severity.</li>
             </ul>
+            <p><b>Try it without an account.</b> On first start the plugin fetches a free trial brain by itself
+            &mdash; no sign-up, no credit card, no key to paste. Link an account later to keep the data.</p>
+            <p><img src="https://cachly.dev/screenshots/intellij/shot1-hero.png" alt="Cachly Brain in a JetBrains IDE: status bar with lesson count and the briefing on project open" width="720"></p>
+            <p><img src="https://cachly.dev/screenshots/intellij/shot3-lessons.png" alt="Lesson viewer: every learned lesson with recall count and severity" width="720"></p>
+            <p><img src="https://cachly.dev/screenshots/intellij/shot2-doctor.png" alt="Brain Doctor: checks API key, instance and network, and names the fix" width="720"></p>
             <p>Works with the Cachly MCP server. Free tier forever &middot; GDPR &middot; EU servers.</p>
         """.trimIndent()
         changeNotes = changeNotesFromChangelog()
