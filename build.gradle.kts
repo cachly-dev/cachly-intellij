@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "dev.cachly"
-version = "0.8.0"
+version = "0.8.1"
 
 repositories {
     mavenCentral()
@@ -159,6 +159,38 @@ intellijPlatform {
             // Support-Bereichs (sinceBuild 241, s. Changelog "241-252").
             ide(org.jetbrains.intellij.platform.gradle.IntelliJPlatformType.IntellijIdeaCommunity, "2024.1")
             ide(org.jetbrains.intellij.platform.gradle.IntelliJPlatformType.IntellijIdeaCommunity, "2025.2")
+
+            // ── DIE OBERE KANTE WIRD NICHT GEPRUEFT — und das ist bekannt ──
+            //
+            // `untilBuild` ist null: Wir behaupten Vertraeglichkeit ohne
+            // Obergrenze. Geprueft wird nur bis 2025.2. Genau in dieser Luecke
+            // ist Version 0.8.0 haengengeblieben.
+            //
+            // Der Marketplace-Verifier prueft gegen die NEUESTE Reihe. Sein
+            // Lauf vom 21.08.2026 (Verifier 1.408) gegen
+            // IntelliJ IDEA 2026.2.2 EAP (262.10315.19) meldete:
+            //
+            //     Compatible. 1 usage of internal API
+            //       PluginManagerCore.getPlugin(PluginId) (1)
+            //
+            // Unser Lauf gegen 2024.1 und 2025.2 sagte "Compatible" ohne
+            // Zusatz — dort ist dieselbe Methode NICHT intern (nachgesehen mit
+            // javap: sie traegt in 2025.2 nur @JvmStatic und @Contract).
+            //
+            // GEMESSEN AM 22.08.2026: Diese Luecke laesst sich hier NICHT
+            // schliessen. Drei Schreibweisen versucht, keine loest auf:
+            //
+            //   ide(..., "2026.2")          Could not find idea:ideaIC:2026.2
+            //   ide(..., "262.10315.19")    Could not find idea:ideaIC:262.10315.19
+            //   select { channels = EAP }   laeuft durch, fuegt aber NICHTS hinzu
+            //                               (weiterhin nur 2 Verifikationen)
+            //
+            // EAP-Artefakte liegen nicht in den oeffentlichen Verzeichnissen,
+            // die `defaultRepositories()` durchsucht.
+            //
+            // Damit bleibt nur EIN Weg, und der gehoert entschieden:
+            // `untilBuild` setzen, damit wir nicht mehr behaupten, als wir
+            // pruefen. Siehe .agent/JETBRAINS-ANTWORT-9078085.md.
         }
     }
 }

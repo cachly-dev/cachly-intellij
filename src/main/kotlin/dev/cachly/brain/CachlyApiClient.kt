@@ -175,11 +175,39 @@ object CachlyApiClient {
      *
      * Read from the plugin descriptor so it cannot drift away from the shipped
      * version, with a literal fallback for unit tests that run without an IDE.
+     *
+     * ── Warum NICHT PluginManagerCore (JetBrains-Vorgang 9078085) ──────────
+     *
+     * Bis zum 22.08.2026 stand hier:
+     *
+     *     PluginManagerCore.getPlugin(PluginId.getId("dev.cachly.brain"))?.version
+     *
+     * Genau diese eine Zeile hat die Freigabe von 0.8.0 blockiert. Der
+     * Marketplace-Verifier (Lauf 1141205, 21.08.2026, Verifier 1.408):
+     *
+     *     Compatible. 1 usage of internal API
+     *       Internal method usage (1)
+     *         PluginManagerCore.getPlugin(PluginId) (1)
+     *
+     * Wichtig fuer die Fehlersuche: `./gradlew verifyPlugin` findet das NICHT.
+     * Der Marktplatz prueft gegen **IntelliJ IDEA 2026.2.2 EAP
+     * (262.10315.19)**, unser Build nur gegen 2024.1 und 2025.2. In 2025.2
+     * traegt die Methode nachweislich nur `@JvmStatic` und `@Contract` — in
+     * 262 ist sie intern.
+     *
+     * Der Grund dafuer ist unser eigener `untilBuild = null`: Wir behaupten
+     * Vertraeglichkeit ohne Obergrenze und pruefen nur bis 2025.2. Wer diese
+     * Luecke schliessen will, siehe .agent/JETBRAINS-ANTWORT-9078085.md.
+     *
+     * `PluginManager.getPluginByClass` ist oeffentlich (geprueft in 2025.2:
+     * traegt nur `@Nullable`) und ausserdem der bessere Weg — es braucht die
+     * Plugin-Kennung nicht als Zeichenkette und kann deshalb nicht von der
+     * plugin.xml abweichen.
      */
     val USER_AGENT: String by lazy {
         val v = try {
-            com.intellij.ide.plugins.PluginManagerCore
-                .getPlugin(com.intellij.openapi.extensions.PluginId.getId("dev.cachly.brain"))
+            com.intellij.ide.plugins.PluginManager
+                .getPluginByClass(CachlyApiClient::class.java)
                 ?.version
         } catch (_: Throwable) { null }
         "cachly-intellij/${v ?: "dev"}"
