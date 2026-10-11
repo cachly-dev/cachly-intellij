@@ -35,11 +35,53 @@ object CachlyInstructionWriter {
         return null
     }
 
-    fun writeAll(projectPath: String, baseUrl: String, apiKey: String, instanceId: String): Result {
+    /**
+     * Legt den Schluessel in `<heim>/.cachly/credentials.json` ab — dieselbe
+     * Datei und dasselbe Format ({"apiKey", "instanceId"}), aus der der
+     * MCP-Server ihn liest (sdk/mcp/src/credentials.ts, resolveApiKey: nach
+     * CACHLY_JWT und vor Projektdateien).
+     *
+     * Warum (11.10.2026): Bis 0.8.3 stand CACHLY_JWT im Klartext in .mcp.json
+     * und .junie/mcp/mcp.json IM PROJEKT — Dateien, die oft mit committet
+     * werden. Der MCP-Server haelt den Schluessel seit GROW-033 aus
+     * Projektdateien heraus; das Plugin zog nicht nach.
+     *
+     * Liegt dort schon ein ANDERER Schluessel, bleibt er stehen und es kommt
+     * false zurueck: Der Server wuerde sonst mit dem falschen Konto sprechen.
+     * Dann schreibt writeAll den Schluessel wie bisher ins Projekt.
+     */
+    internal fun speichereSchluesselImHeim(apiKey: String, instanceId: String, heim: File): Boolean = runCatching {
+        val datei = File(heim, ".cachly/credentials.json")
+        if (datei.exists()) {
+            val alt = parseJsoncObject(datei.readText())["apiKey"] as? String
+            if (alt == apiKey) return@runCatching true
+            if (!alt.isNullOrBlank()) return@runCatching false
+        }
+        datei.parentFile.mkdirs()
+        val tmp = File(datei.parentFile, "credentials.json.tmp")
+        tmp.writeText(toJson(linkedMapOf("apiKey" to apiKey, "instanceId" to instanceId), 0))
+        // Nur fuer den Besitzer lesbar (wie chmod 0600 im MCP-Server; unter Windows best effort).
+        tmp.setReadable(false, false); tmp.setReadable(true, true)
+        tmp.setWritable(false, false); tmp.setWritable(true, true)
+        java.nio.file.Files.move(
+            tmp.toPath(), datei.toPath(),
+            java.nio.file.StandardCopyOption.REPLACE_EXISTING,
+        )
+        true
+    }.getOrDefault(false)
+
+    fun writeAll(
+        projectPath: String,
+        baseUrl: String,
+        apiKey: String,
+        instanceId: String,
+        heim: File = File(System.getProperty("user.home")),
+    ): Result {
         val start = File(projectPath)
         val root = findGitRoot(start) ?: start
         val written = mutableListOf<String>()
         val skipped = mutableListOf<String>()
+        val schluesselImHeim = speichereSchluesselImHeim(apiKey, instanceId, heim)
 
         // 1. MCP server configs — merge the cachly server, preserve everything else.
         //    .mcp.json                is read by Claude Code.
@@ -60,11 +102,12 @@ object CachlyInstructionWriter {
                 servers["cachly"] = linkedMapOf(
                     "command" to "npx",
                     "args" to listOf("-y", "@cachly-dev/mcp-server@latest"),
-                    "env" to linkedMapOf(
-                        "CACHLY_API_URL" to baseUrl,
-                        "CACHLY_JWT" to apiKey,
-                        "CACHLY_BRAIN_INSTANCE_ID" to instanceId,
-                    ),
+                    "env" to linkedMapOf<String, String>().apply {
+                        put("CACHLY_API_URL", baseUrl)
+                        // Nur noch, wenn der Schluessel NICHT im Heimordner liegt.
+                        if (!schluesselImHeim) put("CACHLY_JWT", apiKey)
+                        put("CACHLY_BRAIN_INSTANCE_ID", instanceId)
+                    },
                 )
                 existing["mcpServers"] = servers
                 mcpFile.writeText(toJson(existing, 0))
@@ -78,12 +121,17 @@ object CachlyInstructionWriter {
         //    root files → append/replace, never clobber the user's content.
         val block = "$BRAIN_START\n${buildBrainBlock(instanceId)}$BRAIN_END"
         File(root, ".github").mkdirs()
+        // JetBrains AI Assistant (11.10.2026): keine Hooks, aber Projektregeln in
+        // .aiassistant/rules/*.md. Laut Hilfe 2026.2 werden sie "by default ...
+        // automatically added to each chat session" — die Datei wirkt ohne Klick.
+        File(root, ".aiassistant/rules").mkdirs()
         val targets = listOf(
             File(root, "CLAUDE.md"),
             File(root, "AGENTS.md"),
             File(root, ".github/copilot-instructions.md"),
             File(root, ".windsurfrules"),
             File(root, ".clinerules"),
+            File(root, ".aiassistant/rules/cachly.md"),
         )
         for (file in targets) {
             runCatching {
@@ -166,7 +214,9 @@ object CachlyInstructionWriter {
             for ((event, name) in events) {
                 val f = File(hookDir, name)
                 scriptPaths[event] = f.absolutePath.replace('\\', '/')
-                val script = buildAmbientHook(event, instanceId, apiKey) + "\n"
+                // Schluessel nur noch im Skript, wenn er nicht im Heimordner liegt;
+                // ambient-recall liest ihn sonst aus ~/.cachly/credentials.json.
+                val script = buildAmbientHook(event, instanceId, if (schluesselImHeim) null else apiKey) + "\n"
                 if (!f.exists() || f.readText() != script) {
                     f.writeText(script)
                     runCatching { f.setExecutable(true, false) }

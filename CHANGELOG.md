@@ -2,6 +2,17 @@
 
 ---
 
+## [0.8.4] – 2026-10-11 — *"JetBrains AI Assistant reads the Brain protocol"*
+
+### Security
+- **Your API key stays out of the project.** Until 0.8.3, "Set Up AI Files" wrote the key in plain text into `.mcp.json`, `.junie/mcp/mcp.json` and the `.claude/hooks/` scripts, files that often end up in git. It now stores the key in `~/.cachly/credentials.json`, where the cachly MCP server already looks for it, and leaves it out of project files. If that file already holds a different key, it stays untouched and the plugin keeps the old behaviour, so the server never talks to the wrong account. Run "Set Up AI Files" once to clean existing projects.
+
+### Added
+- **A project rule for JetBrains AI Assistant.** "Set Up AI Files" now also writes `.aiassistant/rules/cachly.md`. AI Assistant has no hooks, but it adds project rules to every chat session by default, so it asks the Brain before a task and stores a lesson after a fix.
+
+### Fixed
+- **Your use of the Brain is counted.** Until 0.8.3 the plugin reported only "file briefing shown". On project open with a working Brain it now reports `session_start`, and after a saved lesson `learn_from_attempts`, the same events the MCP server and the VS Code extension send, with the plugin version. The project-open check runs even when the briefing is turned off; the briefing itself still follows your setting.
+
 ## [0.8.3] – 2026-10-11 — *"The new key is used right away"*
 
 ### Fixed

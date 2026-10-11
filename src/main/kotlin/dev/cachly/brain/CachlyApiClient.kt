@@ -326,6 +326,11 @@ object CachlyApiClient {
         if (!ok) {
             // API unreachable — save locally, will sync when Brain is reachable
             OfflineLessonQueue.getInstance().enqueue(topic, whatWorked)
+        } else {
+            // Gleicher Name wie beim MCP-Server: Kohorte und Trichter zaehlen
+            // JetBrains-Nutzer sonst nie als aktiv (11.10.2026: 12 neue Konten
+            // ueber 0.8.3, 0 Ereignisse).
+            trackEvent("learn_from_attempts")
         }
         return ok
     }
@@ -387,6 +392,9 @@ object CachlyApiClient {
             "event" to event,
             "editor" to "intellij",
             "source" to "intellij",
+            // Ohne Fassung liess sich nicht sagen, welche Plugin-Version ein
+            // Ereignis schickt (mcp_events.version war bei intellij immer leer).
+            "version" to (gebauteVersion() ?: "dev"),
             "api_key" to settings.apiKey,
             "instance_id" to settings.instanceId,
         ))

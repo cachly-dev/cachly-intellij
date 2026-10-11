@@ -51,14 +51,22 @@ class ProactiveRecallStartup : StartupActivity {
             return
         }
 
-        if (!CachlySettings.getInstance().state.proactiveBriefing) return
-
         ApplicationManager.getApplication().executeOnPooledThread {
             val health = try {
                 CachlyApiClient.fetchHealth()
             } catch (_: Exception) {
                 return@executeOnPooledThread
             }
+            // 11.10.2026: Das Plugin meldete bis 0.8.3 nur "Briefing gezeigt" —
+            // 12 neue JetBrains-Konten an einem Tag, 0 Ereignisse, Nutzung
+            // unsichtbar. Gleiche Namen wie MCP-Server und VS Code, damit
+            // Kohorte und Trichter sie mitzaehlen. first_call_success wird
+            // serverseitig nur beim ersten Mal als Aktivierung gemeldet.
+            if (health.status == "healthy") {
+                CachlyApiClient.trackEvent("first_call_success")
+                CachlyApiClient.trackEvent("session_start")
+            }
+            // showProjectBriefing prueft proactiveBriefing selbst.
             showProjectBriefing(project, health)
         }
     }
