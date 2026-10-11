@@ -128,6 +128,7 @@ cd sdk/intellij
 ## Links
 
 - [cachly.dev](https://cachly.dev) — Dashboard & free signup
+- [JetBrains guide](https://cachly.dev/docs/jetbrains) — what the plugin does, and how Claude Code, Junie or AI Assistant get the Brain
 - [AI Brain docs](https://cachly.dev/docs/ai-memory) — MCP server setup
 - [MCP Server npm](https://www.npmjs.com/package/@cachly-dev/mcp-server) — The brain backend
 - [VS Code Extension](https://marketplace.visualstudio.com/items?itemName=cachly-dev.cachly-brain) — same brain, same trial, for VS Code

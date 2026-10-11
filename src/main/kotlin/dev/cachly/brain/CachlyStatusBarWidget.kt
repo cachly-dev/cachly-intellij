@@ -7,7 +7,9 @@ import com.intellij.openapi.wm.StatusBarWidgetFactory
 import com.intellij.openapi.util.Disposer
 import com.intellij.util.Consumer
 import java.awt.event.MouseEvent
+import java.util.concurrent.CopyOnWriteArraySet
 import java.util.concurrent.Executors
+import java.util.concurrent.RejectedExecutionException
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
 import javax.swing.SwingUtilities
@@ -41,6 +43,7 @@ class CachlyStatusBarWidget(private val project: Project) :
 
     override fun install(statusBar: StatusBar) {
         this.statusBar = statusBar
+        live.add(this)
         // Note: this widget must never POST /recall itself. Heartbeat pings from
         // the IDE inflate the recall counter that every ROI metric is derived
         // from — recalls are only counted when an AI actually reuses a lesson.
@@ -50,7 +53,17 @@ class CachlyStatusBarWidget(private val project: Project) :
 
     private fun refresh() {
         try {
-            val health = CachlyApiClient.fetchHealth()
+            render(CachlyApiClient.fetchHealth())
+        } catch (_: Exception) {
+            SwingUtilities.invokeLater {
+                currentText = "🧠 Brain: error"
+                statusBar?.updateWidget(ID())
+            }
+        }
+    }
+
+    private fun render(health: BrainHealth) {
+        try {
             // Brain is reachable — attempt to flush any offline-queued lessons
             if (health.status != "unreachable" && health.status != "not_configured") {
                 CachlyApiClient.drainOfflineQueue()
@@ -101,7 +114,37 @@ class CachlyStatusBarWidget(private val project: Project) :
     }
 
     override fun dispose() {
+        live.remove(this)
         scheduledTask?.cancel(false)
         scheduler.shutdown()
+    }
+
+    companion object {
+        /** Every installed widget — one per open project window. */
+        private val live: MutableSet<CachlyStatusBarWidget> = CopyOnWriteArraySet()
+
+        /**
+         * Shows an already fetched health result in every status bar NOW,
+         * instead of waiting for the next tick.
+         *
+         * WHY: The widget asks for the first time 2 s after the window opens —
+         * before the onboarding has a key — and then only every
+         * refreshIntervalSec (default 300 s). A fresh trial therefore sat on
+         * "not configured" for up to five minutes, and whoever closed the IDE
+         * before that tick never sent a single call with the new key.
+         *
+         * Takes the result instead of fetching again, so the caller's one
+         * request is the only one. Runs on each widget's own scheduler thread,
+         * never on the EDT.
+         */
+        fun showEverywhere(health: BrainHealth) {
+            for (w in live) {
+                try {
+                    w.scheduler.execute { w.render(health) }
+                } catch (_: RejectedExecutionException) {
+                    // Widget is being disposed — nothing to show it on.
+                }
+            }
+        }
     }
 }

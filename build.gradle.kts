@@ -5,7 +5,32 @@ plugins {
 }
 
 group = "dev.cachly"
-version = "0.8.1"
+version = "0.8.3"
+
+// ── Die eigene Version als Datei ins Paket legen ──────────────────────────
+//
+// Der User-Agent braucht die Plugin-Version. Zwei Anlaeufe, sie zur Laufzeit
+// bei der Plattform zu erfragen, hat der Marktplatz abgelehnt:
+//
+//     0.8.0  PluginManagerCore.getPlugin(PluginId)   → internal API
+//     0.8.1  PluginManager.getPluginByClass(Class)   → internal API
+//
+// Beide Male gruen im eigenen `verifyPlugin` (2024.1 / 2025.2) und rot beim
+// Marktplatz, der gegen die naechste EAP prueft. Eine Datei aus dem eigenen
+// Bau kann nicht intern werden — und sie kann auch nicht von `project.version`
+// abweichen, weil sie daraus entsteht.
+val versionsDateiSchreiben = tasks.register("versionsDateiSchreiben") {
+    val ziel = layout.buildDirectory.file(
+        "generated/cachly-version/dev/cachly/brain/version.properties")
+    val nummer = project.version.toString()
+    inputs.property("version", nummer)
+    outputs.file(ziel)
+    doLast {
+        val datei = ziel.get().asFile
+        datei.parentFile.mkdirs()
+        datei.writeText("version=$nummer\n")
+    }
+}
 
 repositories {
     mavenCentral()
@@ -18,8 +43,20 @@ dependencies {
     intellijPlatform {
         intellijIdeaCommunity("2024.1")
         instrumentationTools()
+        // Plain JUnit tests for logic without IDE state (src/test). The
+        // platform test framework puts JUnit 4 on the test runtime the way the
+        // IntelliJ Platform Gradle Plugin expects it.
+        testFramework(org.jetbrains.intellij.platform.gradle.TestFrameworkType.Platform)
     }
     implementation("com.google.code.gson:gson:2.11.0")
+    testImplementation("junit:junit:4.13.2")
+}
+
+sourceSets["main"].resources.srcDir(
+    layout.buildDirectory.dir("generated/cachly-version"))
+
+tasks.named<ProcessResources>("processResources") {
+    dependsOn(versionsDateiSchreiben)
 }
 
 /**

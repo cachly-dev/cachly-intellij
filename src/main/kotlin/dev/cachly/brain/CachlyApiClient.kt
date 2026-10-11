@@ -173,44 +173,51 @@ object CachlyApiClient {
      * — the one measurement that would have shown the missing onboarding
      * months earlier.
      *
-     * Read from the plugin descriptor so it cannot drift away from the shipped
-     * version, with a literal fallback for unit tests that run without an IDE.
+     * Die Version kommt aus einer Datei, die der Bau schreibt
+     * (`version.properties`, erzeugt von `versionsDateiSchreiben` in
+     * build.gradle.kts aus `project.version`). Sie kann deshalb nicht von der
+     * ausgelieferten Version abweichen — und sie fragt die Plattform nicht.
      *
-     * ── Warum NICHT PluginManagerCore (JetBrains-Vorgang 9078085) ──────────
+     * ── Warum keine Plattform-Schnittstelle (JetBrains-Vorgang 9078085) ────
      *
-     * Bis zum 22.08.2026 stand hier:
+     * Zwei Anlaeufe sind an genau dieser einen Zeile gescheitert, beide erst
+     * beim Marktplatz, nicht im eigenen Bau:
      *
-     *     PluginManagerCore.getPlugin(PluginId.getId("dev.cachly.brain"))?.version
+     *     0.8.0  PluginManagerCore.getPlugin(PluginId)      → internal
+     *     0.8.1  PluginManager.getPluginByClass(Class)      → internal
      *
-     * Genau diese eine Zeile hat die Freigabe von 0.8.0 blockiert. Der
-     * Marketplace-Verifier (Lauf 1141205, 21.08.2026, Verifier 1.408):
+     * Der Verifier des Marktplatzes (Lauf 1.410, 03.09.2026, IntelliJ IDEA
+     * 2026.3 EAP 263.3889.65) meldete beide Male dasselbe:
      *
      *     Compatible. 1 usage of internal API
-     *       Internal method usage (1)
-     *         PluginManagerCore.getPlugin(PluginId) (1)
      *
-     * Wichtig fuer die Fehlersuche: `./gradlew verifyPlugin` findet das NICHT.
-     * Der Marktplatz prueft gegen **IntelliJ IDEA 2026.2.2 EAP
-     * (262.10315.19)**, unser Build nur gegen 2024.1 und 2025.2. In 2025.2
-     * traegt die Methode nachweislich nur `@JvmStatic` und `@Contract` — in
-     * 262 ist sie intern.
+     * `./gradlew verifyPlugin` findet das NICHT: unser Bau prueft gegen 2024.1
+     * und 2025.2, dort trug `getPluginByClass` nur `@Nullable`. Der Marktplatz
+     * prueft gegen die naechste EAP. Ursache ist unser eigenes
+     * `untilBuild = null` — wir behaupten Vertraeglichkeit ohne Obergrenze und
+     * pruefen nur die untere Kante. Siehe .agent/JETBRAINS-ANTWORT-9078085.md.
      *
-     * Der Grund dafuer ist unser eigener `untilBuild = null`: Wir behaupten
-     * Vertraeglichkeit ohne Obergrenze und pruefen nur bis 2025.2. Wer diese
-     * Luecke schliessen will, siehe .agent/JETBRAINS-ANTWORT-9078085.md.
-     *
-     * `PluginManager.getPluginByClass` ist oeffentlich (geprueft in 2025.2:
-     * traegt nur `@Nullable`) und ausserdem der bessere Weg — es braucht die
-     * Plugin-Kennung nicht als Zeichenkette und kann deshalb nicht von der
-     * plugin.xml abweichen.
+     * Die dritte oeffentliche Methode zu suchen waere der dritte Anlauf
+     * derselben Wette: was heute oeffentlich ist, kann in der naechsten EAP
+     * intern sein. Eine Datei aus dem eigenen Bau kann das nicht.
      */
-    val USER_AGENT: String by lazy {
-        val v = try {
-            com.intellij.ide.plugins.PluginManager
-                .getPluginByClass(CachlyApiClient::class.java)
-                ?.version
-        } catch (_: Throwable) { null }
-        "cachly-intellij/${v ?: "dev"}"
+    val USER_AGENT: String by lazy { "cachly-intellij/${gebauteVersion() ?: "dev"}" }
+
+    /**
+     * Liest `version=` aus der vom Bau erzeugten Datei. Gibt `null` zurueck,
+     * wenn sie fehlt — dann steht "dev" im User-Agent, und kein Aufruf faellt
+     * deshalb aus.
+     */
+    private fun gebauteVersion(): String? = try {
+        CachlyApiClient::class.java
+            .getResourceAsStream("/dev/cachly/brain/version.properties")
+            ?.use { strom ->
+                java.util.Properties().apply { load(strom) }.getProperty("version")
+            }
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
+    } catch (_: Throwable) {
+        null
     }
 
     private val gson = Gson()
@@ -483,7 +490,71 @@ object CachlyApiClient {
         return try { Gson().fromJson(raw, DeviceTokenResponse::class.java) } catch (_: Exception) { null }
     }
 
-    private fun httpPost(url: String, apiKey: String, body: String): String? {
+    /**
+     * Holt die Instanz-ID nach, wenn ein Schluessel da ist, aber keine Instanz.
+     *
+     * WARUM: Ohne Instanz-ID macht dieses Plugin KEINEN einzigen Aufruf.
+     * fetchHealth und fetchBriefing kehren dann vor dem Netz um, die
+     * Statusleiste zeigt fuer immer "not configured", und needsKey() sagt
+     * "verbunden", weil es nur auf den Schluessel schaut. /auth/instant-trial
+     * liefert die ID leer, wenn das Anlegen der Instanz scheitert ("Extension
+     * will retry AutoProvision later via /api/v1/instances/auto",
+     * api/internal/handler/instant_trial_handler.go). Die VS-Code-Erweiterung
+     * holt sie dort nach (sdk/vscode/src/extension.ts, silentAutoSetup,
+     * Schritt 4); dieses Plugin tat es nie.
+     *
+     * Gibt true zurueck, wenn danach eine ID gespeichert ist. Muss abseits des
+     * EDT laufen.
+     */
+    fun ensureInstanceId(): Boolean {
+        val settings = CachlySettings.getInstance().state
+        if (settings.instanceId.isNotBlank()) return true
+        if (settings.apiKey.isBlank()) return false
+        val raw = httpPostAccepting(
+            "${apiBase()}/api/v1/instances/auto",
+            settings.apiKey,
+            "{}",
+        ) ?: return false
+        val id = parseAutoInstanceId(raw) ?: return false
+        settings.instanceId = id
+        return true
+    }
+
+    /**
+     * Liest die Instanz-ID aus der Antwort von POST /api/v1/instances/auto.
+     *
+     * Der Server antwortet in ZWEI Formen (api/internal/handler/instance_handler.go,
+     * AutoProvision):
+     *
+     *     200  {"instance": {"id": "<uuid>", ...}, "created": false}
+     *     201  {"instance_id": "<uuid>", "status": "...", "created": true}
+     *
+     * Wer nur eine Form liest, bekommt beim jeweils anderen Fall still nichts.
+     */
+    internal fun parseAutoInstanceId(json: String): String? = try {
+        val obj = com.google.gson.JsonParser.parseString(json).asJsonObject
+        val nested = obj.get("instance")?.takeIf { it.isJsonObject }?.asJsonObject
+            ?.get("id")?.takeIf { it.isJsonPrimitive }?.asString
+        val flat = obj.get("instance_id")?.takeIf { it.isJsonPrimitive }?.asString
+        (nested ?: flat)?.trim()?.takeIf { it.isNotEmpty() }
+    } catch (_: Exception) {
+        null
+    }
+
+    private fun httpPost(url: String, apiKey: String, body: String): String? =
+        httpPostAccepting(url, apiKey, body, okCodes = 200..200)
+
+    /**
+     * POST mit Schluessel. [okCodes] ist ausdruecklich, weil /instances/auto
+     * beim Neuanlegen 201 antwortet — eine Pruefung nur auf 200 haette genau
+     * den Fall verworfen, fuer den der Aufruf da ist.
+     */
+    private fun httpPostAccepting(
+        url: String,
+        apiKey: String,
+        body: String,
+        okCodes: IntRange = 200..201,
+    ): String? {
         return try {
             val conn = URI(url).toURL().openConnection() as HttpURLConnection
             conn.requestMethod = "POST"
@@ -495,7 +566,7 @@ object CachlyApiClient {
             conn.setRequestProperty("Accept", "application/json")
             conn.setRequestProperty("User-Agent", USER_AGENT)
             conn.outputStream.bufferedWriter().use { it.write(body) }
-            if (conn.responseCode == 200) conn.inputStream.bufferedReader().readText() else null
+            if (conn.responseCode in okCodes) conn.inputStream.bufferedReader().readText() else null
         } catch (_: Exception) { null }
     }
 }

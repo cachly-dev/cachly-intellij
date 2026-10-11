@@ -43,6 +43,14 @@ class ProactiveRecallStartup : StartupActivity {
             return
         }
 
+        // A key without an instance id makes every call below return before
+        // the network — see CachlyApiClient.ensureInstanceId. Installs that
+        // got such a trial before 0.8.3 are repaired here, on the next start.
+        if (CachlySettings.getInstance().state.instanceId.isBlank()) {
+            CachlyOnboarding.repairMissingInstance(project)
+            return
+        }
+
         if (!CachlySettings.getInstance().state.proactiveBriefing) return
 
         ApplicationManager.getApplication().executeOnPooledThread {
@@ -51,9 +59,24 @@ class ProactiveRecallStartup : StartupActivity {
             } catch (_: Exception) {
                 return@executeOnPooledThread
             }
-            if (project.isDisposed) return@executeOnPooledThread
+            showProjectBriefing(project, health)
+        }
+    }
+
+    companion object {
+        /**
+         * The "welcome back" briefing with the top lessons. Silent when there is
+         * nothing to brief (not healthy, no lessons). Must run off the EDT.
+         *
+         * Shared with CachlyOnboarding: someone who links an existing account
+         * gets the briefing right after connecting, not only on the next
+         * project open.
+         */
+        fun showProjectBriefing(project: Project, health: BrainHealth) {
+            if (project.isDisposed) return
+            if (!CachlySettings.getInstance().state.proactiveBriefing) return
             if (health.status != "healthy" || health.lessons <= 0 || health.topLessons.isEmpty()) {
-                return@executeOnPooledThread
+                return
             }
 
             // Skip low-signal auto-changelog topics (bare "deploy:", "auto:*") and
@@ -66,7 +89,7 @@ class ProactiveRecallStartup : StartupActivity {
             val top = (if (meaningful.isNotEmpty()) meaningful else health.topLessons)
                 .sortedByDescending { it.recallCount }
                 .take(3)
-            if (top.isEmpty()) return@executeOnPooledThread
+            if (top.isEmpty()) return
 
             val recallLabel = if (health.recallLimit > 0) {
                 "${health.totalRecalls}/${health.recallLimit} recalls this month"
@@ -84,9 +107,9 @@ class ProactiveRecallStartup : StartupActivity {
             }
 
             val group = NotificationGroupManager.getInstance()
-                .getNotificationGroup("Cachly Brain Ambient") ?: return@executeOnPooledThread
+                .getNotificationGroup("Cachly Brain Ambient") ?: return
 
-            if (!ProactiveBudget.claimInterrupt()) return@executeOnPooledThread
+            if (!ProactiveBudget.claimInterrupt()) return
 
             group.createNotification(
                 "Cachly Brain — Ambient Recall",

@@ -39,6 +39,14 @@ object CachlyOnboarding {
     private const val DASHBOARD = "https://cachly.dev/dashboard"
 
     /**
+     * What the plugin does and how an AI assistant gets connected. Until 0.8.3
+     * the trial notification linked here while the page did not exist (HTTP
+     * 404 on 2026-10-11) — the first click after a successful signup ended on
+     * an error page.
+     */
+    private const val GUIDE = "https://cachly.dev/docs/jetbrains"
+
+    /**
      * Number of self-serve attempts before the plugin stops trying by itself and
      * only offers the manual path. Three is enough to survive an API restart
      * across a few project opens without minting trials forever.
@@ -81,11 +89,30 @@ object CachlyOnboarding {
         state.onboardingDeclined = false
         ApplicationManager.getApplication().executeOnPooledThread {
             if (!needsKey()) {
+                if (state.instanceId.isBlank()) {
+                    // Key without instance: "already connected" would be a lie —
+                    // nothing works until the instance id is there.
+                    firstContact(project, trial = state.trialEndsAt.isNotBlank())
+                    return@executeOnPooledThread
+                }
                 notify(project, "Cachly Brain is already connected.", NotificationType.INFORMATION)
                 return@executeOnPooledThread
             }
             if (tryInstantTrial(project)) return@executeOnPooledThread
             startDeviceFlow(project)
+        }
+    }
+
+    /**
+     * Startup repair for a stored key without an instance id. Silent when the
+     * instance still cannot be fetched — the next project open tries again,
+     * and the manual "Connect Brain" action reports the failure visibly.
+     */
+    fun repairMissingInstance(project: Project) {
+        ApplicationManager.getApplication().executeOnPooledThread {
+            if (project.isDisposed) return@executeOnPooledThread
+            if (!CachlyApiClient.ensureInstanceId()) return@executeOnPooledThread
+            firstContact(project, trial = CachlySettings.getInstance().state.trialEndsAt.isNotBlank())
         }
     }
 
@@ -101,20 +128,104 @@ object CachlyOnboarding {
         if (resp.instanceId.isNotBlank()) state.instanceId = resp.instanceId
         state.trialEndsAt = resp.trialEndsAt ?: ""
         state.onboardingAttempts = 0
+        firstContact(project, trial = true)
+        return true
+    }
 
-        val group = NotificationGroupManager.getInstance().getNotificationGroup(GROUP) ?: return true
+    /**
+     * The first real request with a freshly stored key — immediately, not at
+     * the next status-bar tick.
+     *
+     * WHY (measured 2026-10-11, production): 10 accounts were created by
+     * cachly-intellij/0.8.x in 60 days, and 6 of those keys were never used
+     * once (api_keys.last_used_at empty). The routes and the header were fine:
+     * every request of this plugin goes to /api/v1/... with
+     * "Authorization: Bearer cky_...", and that middleware stamps
+     * last_used_at on every valid key. So the plugin sent nothing with the new
+     * key. The code shows how: the status bar had asked 2 s after the window
+     * opened — before the key existed — and asked again only after
+     * refreshIntervalSec (300 s). The file briefing skipped every file opened
+     * before the key. An IDE session shorter than that sent no request with
+     * the key at all and showed "not configured" the whole time. Which of the
+     * six ended exactly that way the server cannot tell; that this path
+     * existed, the code can.
+     *
+     * Now, in this order:
+     *   1. fetch the instance id if the trial answer carried none,
+     *   2. ONE health request (instance, memory, insights) — the call that
+     *      stamps last_used_at and proves the key works,
+     *   3. show its result in every status bar right away,
+     *   4. tell the user what happened — success or the reason it failed,
+     *      never silence,
+     *   5. show the project briefing when the Brain already holds lessons
+     *      (a linked account; a fresh trial has none).
+     *
+     * Must run off the EDT. Never throws.
+     */
+    private fun firstContact(project: Project, trial: Boolean) {
+        try {
+            val hasInstance = CachlyApiClient.ensureInstanceId()
+            val health = if (hasInstance) CachlyApiClient.fetchHealth() else null
+            if (health != null) CachlyStatusBarWidget.showEverywhere(health)
+            if (project.isDisposed) return
+
+            val reached = health != null &&
+                health.status != "unreachable" && health.status != "not_configured"
+            if (reached) {
+                announceConnected(project, health!!, trial)
+                ProactiveRecallStartup.showProjectBriefing(project, health)
+            } else {
+                announceNotReached(project, if (hasInstance) "the Brain did not answer" else "no Brain instance was assigned")
+            }
+        } catch (_: Exception) {
+            // Onboarding must never throw into a pooled thread's caller.
+        }
+    }
+
+    private fun announceConnected(project: Project, health: BrainHealth, trial: Boolean) {
+        val group = NotificationGroupManager.getInstance().getNotificationGroup(GROUP) ?: return
+        val lessons = if (health.lessons == 1) "1 lesson" else "${health.lessons} lessons"
+        val notification = if (trial) {
+            group.createNotification(
+                "Cachly Brain — trial brain connected",
+                "Your Brain answers: $lessons so far. Connect your AI assistant so it can read and add lessons. " +
+                    "Link an account to keep the data beyond the trial.",
+                NotificationType.INFORMATION,
+            ).addAction(
+                NotificationAction.createSimple("How to connect your AI") { BrowserUtil.browse(GUIDE) },
+            ).addAction(
+                NotificationAction.createSimple("Link account") { startDeviceFlow(project) },
+            )
+        } else {
+            group.createNotification(
+                "Cachly Brain — connected",
+                "Your Brain answers: $lessons. Your AI assistant uses it once it is connected over MCP.",
+                NotificationType.INFORMATION,
+            ).addAction(
+                NotificationAction.createSimple("How to connect your AI") { BrowserUtil.browse(GUIDE) },
+            )
+        }
+        notification.notify(project)
+    }
+
+    /**
+     * The key is stored, but the first request failed. Said out loud, with the
+     * way to the reason — a stored key that silently does nothing is the state
+     * this whole chain exists to end.
+     */
+    private fun announceNotReached(project: Project, reason: String) {
+        val group = NotificationGroupManager.getInstance().getNotificationGroup(GROUP) ?: return
+        val every = CachlySettings.getInstance().state.refreshIntervalSec
         group.createNotification(
-            "Cachly Brain — trial started",
-            "Your assistant now has persistent memory. Link an account to keep the data beyond the trial.",
-            NotificationType.INFORMATION,
+            "Cachly Brain — key saved, Brain not reached",
+            "The key is saved, but $reason. The status bar tries again every $every s. " +
+                "Tools → Run Brain Doctor shows the reason.",
+            NotificationType.WARNING,
         ).addAction(
-            NotificationAction.createSimple("Link account") { startDeviceFlow(project) },
-        ).addAction(
-            NotificationAction.createSimple("Set up AI files") {
-                BrowserUtil.browse("https://cachly.dev/docs/jetbrains")
+            NotificationAction.createSimple("Open settings") {
+                ShowSettingsUtil.getInstance().showSettingsDialog(project, CachlySettingsConfigurable::class.java)
             },
         ).notify(project)
-        return true
     }
 
     /**
@@ -175,14 +286,15 @@ object CachlyOnboarding {
                     if (!token.isNullOrBlank()) {
                         val state = CachlySettings.getInstance().state
                         state.apiKey = token
-                        if (!poll.instanceId.isNullOrBlank()) state.instanceId = poll.instanceId
+                        // /auth/device/token answers {access_token, token_type}
+                        // and NO instance id (api/internal/handler/
+                        // device_auth_handler.go). Keeping the old id would
+                        // point the new account's key at the trial's instance;
+                        // clearing it lets firstContact fetch the right one.
+                        state.instanceId = poll.instanceId?.takeIf { it.isNotBlank() } ?: ""
                         state.trialEndsAt = ""
                         state.onboardingAttempts = 0
-                        notify(
-                            project,
-                            "Cachly Brain connected. Your assistant keeps its memory from here on.",
-                            NotificationType.INFORMATION,
-                        )
+                        firstContact(project, trial = false)
                         return
                     }
                     // Terminal answers: stop instead of waiting out the deadline.

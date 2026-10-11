@@ -8,7 +8,7 @@ import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.vfs.LocalFileSystem
 
 /**
- * "Set Up AI Files" — writes .mcp.json, CLAUDE.md, AGENTS.md,
+ * "Set Up AI Files" — writes .mcp.json, .junie/mcp/mcp.json, CLAUDE.md, AGENTS.md,
  * .github/copilot-instructions.md and the CLS git hook into the project root,
  * so every AI tool the user has gets the full Brain protocol. Mirrors the VS
  * Code extension's setup flow.
@@ -23,7 +23,7 @@ class SetupBrainAction : AnAction() {
             return
         }
         val settings = CachlySettings.getInstance().state
-        if (settings.apiKey.isBlank() || settings.instanceId.isBlank()) {
+        if (settings.apiKey.isBlank()) {
             Messages.showWarningDialog(
                 project,
                 "Set your API key and instance ID first:\nSettings → Tools → Cachly Brain.",
@@ -34,6 +34,19 @@ class SetupBrainAction : AnAction() {
 
         object : Task.Backgroundable(project, "Setting up Cachly Brain files", false) {
             override fun run(indicator: ProgressIndicator) {
+                // A key without an instance id: fetch it instead of refusing —
+                // see CachlyApiClient.ensureInstanceId.
+                if (!CachlyApiClient.ensureInstanceId()) {
+                    javax.swing.SwingUtilities.invokeLater {
+                        Messages.showWarningDialog(
+                            project,
+                            "Your key is saved, but no Brain instance could be assigned to it.\n" +
+                                "Run Tools → Run Brain Doctor, or set the instance ID in Settings → Tools → Cachly Brain.",
+                            "Cachly Brain — No Instance",
+                        )
+                    }
+                    return
+                }
                 val result = CachlyInstructionWriter.writeAll(
                     basePath,
                     settings.apiUrl.trimEnd('/'),
@@ -49,7 +62,8 @@ class SetupBrainAction : AnAction() {
                     Messages.showInfoMessage(
                         project,
                         "Your AI tools now have persistent memory.\n\nWritten:\n$written$skipped\n\n" +
-                            "Restart your AI tool (Claude Code / Copilot / Cursor) to activate.",
+                            "Restart your AI tool (Claude Code / Junie / Copilot / Cursor) to activate.\n" +
+                            "JetBrains AI Assistant does not read these files — see cachly.dev/docs/jetbrains.",
                         "Cachly Brain — Setup Complete",
                     )
                 }

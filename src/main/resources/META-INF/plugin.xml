@@ -68,7 +68,7 @@
         <action id="Cachly.SetupBrain"
                 class="dev.cachly.brain.SetupBrainAction"
                 text="Set Up AI Files"
-                description="Write .mcp.json, CLAUDE.md, AGENTS.md, copilot-instructions.md and the CLS git hook for this project">
+                description="Write .mcp.json, .junie/mcp/mcp.json, CLAUDE.md, AGENTS.md, copilot-instructions.md and the CLS git hook for this project">
             <add-to-group group-id="ToolsMenu" anchor="last"/>
         </action>
         <action id="Cachly.BrainDoctor"

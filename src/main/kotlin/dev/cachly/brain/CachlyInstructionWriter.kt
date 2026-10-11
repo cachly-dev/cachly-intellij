@@ -9,7 +9,7 @@ import java.io.File
  * replaced; .mcp.json merges the cachly server while preserving others.
  *
  * Files written into the project root (or its git root):
- *  - .mcp.json
+ *  - .mcp.json, .junie/mcp/mcp.json
  *  - CLAUDE.md, AGENTS.md, .github/copilot-instructions.md,
  *    .windsurfrules, .clinerules  (same marked brain block)
  *  - .cursor/rules/cachly.mdc  (frontmatter + brain block, alwaysApply)
@@ -41,25 +41,36 @@ object CachlyInstructionWriter {
         val written = mutableListOf<String>()
         val skipped = mutableListOf<String>()
 
-        // 1. .mcp.json — merge the cachly server, preserve everything else
-        runCatching {
-            val mcpFile = File(root, ".mcp.json")
-            val existing = if (mcpFile.exists()) parseJsoncObject(mcpFile.readText()) else mutableMapOf()
-            @Suppress("UNCHECKED_CAST")
-            val servers = (existing["mcpServers"] as? MutableMap<String, Any?>) ?: mutableMapOf()
-            servers["cachly"] = linkedMapOf(
-                "command" to "npx",
-                "args" to listOf("-y", "@cachly-dev/mcp-server@latest"),
-                "env" to linkedMapOf(
-                    "CACHLY_API_URL" to baseUrl,
-                    "CACHLY_JWT" to apiKey,
-                    "CACHLY_BRAIN_INSTANCE_ID" to instanceId,
-                ),
-            )
-            existing["mcpServers"] = servers
-            mcpFile.writeText(toJson(existing, 0))
-            written.add(".mcp.json")
-        }.onFailure { skipped.add(".mcp.json") }
+        // 1. MCP server configs — merge the cachly server, preserve everything else.
+        //    .mcp.json                is read by Claude Code.
+        //    .junie/mcp/mcp.json      is read by Junie in JetBrains IDEs (project
+        //                             scope, same "mcpServers" format; JetBrains
+        //                             docs: junie.jetbrains.com/docs/junie-cli-mcp-configuration.html).
+        //    Until 0.8.3 only the first was written, so Junie — the agent that
+        //    ships with the IDE this plugin runs in — never saw the Brain.
+        //    JetBrains AI Assistant reads MCP servers from its settings only, not
+        //    from a project file; /docs/jetbrains says how to paste the block there.
+        for (rel in listOf(".mcp.json", ".junie/mcp/mcp.json")) {
+            runCatching {
+                val mcpFile = File(root, rel)
+                mcpFile.parentFile?.mkdirs()
+                val existing = if (mcpFile.exists()) parseJsoncObject(mcpFile.readText()) else mutableMapOf()
+                @Suppress("UNCHECKED_CAST")
+                val servers = (existing["mcpServers"] as? MutableMap<String, Any?>) ?: mutableMapOf()
+                servers["cachly"] = linkedMapOf(
+                    "command" to "npx",
+                    "args" to listOf("-y", "@cachly-dev/mcp-server@latest"),
+                    "env" to linkedMapOf(
+                        "CACHLY_API_URL" to baseUrl,
+                        "CACHLY_JWT" to apiKey,
+                        "CACHLY_BRAIN_INSTANCE_ID" to instanceId,
+                    ),
+                )
+                existing["mcpServers"] = servers
+                mcpFile.writeText(toJson(existing, 0))
+                written.add(rel)
+            }.onFailure { skipped.add(rel) }
+        }
 
         // 2. Instruction/rules files — same marked brain block in each. CLAUDE.md
         //    (Claude Code), AGENTS.md (Codex/agents), copilot-instructions.md

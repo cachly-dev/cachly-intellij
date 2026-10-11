@@ -2,6 +2,32 @@
 
 ---
 
+## [0.8.3] – 2026-10-11 — *"The new key is used right away"*
+
+### Fixed
+- **The first request now happens right after the trial starts.** Measured on 2026-10-11: of 10 trial keys created by 0.8.x, 6 were never used for a single request. The status bar asked 2 s after the window opened, before the key existed, and then only every 300 s. Now the plugin makes one request with the new key immediately, shows the result in the status bar and says in a notification whether the Brain answered. If it did not, the notification says so and points to Brain Doctor.
+- **A missing instance id is fetched.** Without an instance id the plugin sent no request at all and the status bar said "not configured" forever. The plugin now asks `/api/v1/instances/auto` for it, after the trial, after linking an account, on project open and in "Set Up AI Files". Linking an account also no longer keeps the trial's instance id, which belonged to a different account.
+- **The "How to connect your AI" link works.** It pointed to `cachly.dev/docs/jetbrains`, which did not exist (HTTP 404). The page now exists.
+
+### Added
+- **"Set Up AI Files" also writes `.junie/mcp/mcp.json`.** That is the project-level MCP file Junie reads, so Junie gets the Brain the same way Claude Code does through `.mcp.json`. JetBrains AI Assistant reads MCP servers from its settings only; the guide shows how to add the server there.
+
+---
+
+## [0.8.2] – 2026-09-03 — *"The version now comes from the build, not the platform"*
+
+### Fixed
+- **Release no longer blocked by an internal API.** The plugin read its own version number to build the `User-Agent` header. Both earlier ways of asking the platform for it turned out to be internal API: `PluginManagerCore.getPlugin(PluginId)` in 0.8.0 and `PluginManager.getPluginByClass(Class)` in 0.8.1. The Marketplace verifier rejected both, while our own `verifyPlugin` reported "Compatible" every time — it checks 2024.1 and 2025.2, the Marketplace checks the next EAP. The version is now written into the package by the build itself, so nothing is asked of the platform at runtime and the number cannot drift away from the shipped release.
+
+---
+
+## [0.8.1] – 2026-08-22 — *"First attempt at the version lookup"*
+
+### Fixed
+- Swapped `PluginManagerCore.getPlugin(PluginId)` for `PluginManager.getPluginByClass(Class)`. Verified compatible against 2024.1 and 2025.2; the Marketplace verifier found the replacement to be internal API as well, which 0.8.2 resolves for good.
+
+---
+
 ## [0.8.0] – 2026-08-17 — *"The plugin can finally get you a key"*
 
 ### Added
