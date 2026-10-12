@@ -173,6 +173,7 @@ object CachlyOnboarding {
                 health.status != "unreachable" && health.status != "not_configured"
             if (reached) {
                 announceConnected(project, health!!, trial)
+                AiAssistantAnbindung.anbieten(project)
                 ProactiveRecallStartup.showProjectBriefing(project, health)
             } else {
                 announceNotReached(project, if (hasInstance) "the Brain did not answer" else "no Brain instance was assigned")

@@ -65,6 +65,9 @@ class ProactiveRecallStartup : StartupActivity {
             if (health.status == "healthy") {
                 CachlyApiClient.trackEvent("first_call_success")
                 CachlyApiClient.trackEvent("session_start")
+                // 12.10.2026: 11 JetBrains-Konten, 0 Recalls — AI Assistant
+                // kannte den MCP-Server nie. Fragt nur, wenn er dort fehlt.
+                AiAssistantAnbindung.anbieten(project)
             }
             // showProjectBriefing prueft proactiveBriefing selbst.
             showProjectBriefing(project, health)

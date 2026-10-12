@@ -564,7 +564,7 @@ Each recall saves ~1,200 tokens. The Brain survives IDE restarts, team switches,
         private fun skipWs() { while (i < s.length && s[i].isWhitespace()) i++ }
     }
 
-    private fun toJson(value: Any?, indent: Int): String {
+    internal fun toJson(value: Any?, indent: Int): String {
         val pad = "  ".repeat(indent)
         val padIn = "  ".repeat(indent + 1)
         return when (value) {

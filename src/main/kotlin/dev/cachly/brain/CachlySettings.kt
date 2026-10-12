@@ -33,6 +33,10 @@ class CachlySettings : PersistentStateComponent<CachlySettings.State> {
         var onboardingAttempts: Int = 0,
         /** True once the user has explicitly dismissed the connect prompt. */
         var onboardingDeclined: Boolean = false,
+        /** "Don't show again" am Hinweis zur Anbindung von JetBrains AI Assistant. */
+        var aiAssistantHinweisAus: Boolean = false,
+        /** Vor IDE 2025.3: Die Einstellung wurde einmal kopiert — danach nicht mehr nachfragen. */
+        var aiAssistantKopiert: Boolean = false,
         /**
          * "Not helpful" suppressions for per-file briefings, keyed
          * "relPath::topic" -> epoch millis. Capped at 300 (oldest evicted).

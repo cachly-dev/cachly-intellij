@@ -63,7 +63,7 @@ class SetupBrainAction : AnAction() {
                         project,
                         "Your AI tools now have persistent memory.\n\nWritten:\n$written$skipped\n\n" +
                             "Restart your AI tool (Claude Code / Junie / Copilot / Cursor) to activate.\n" +
-                            "JetBrains AI Assistant does not read these files — see cachly.dev/docs/jetbrains.",
+                            "JetBrains AI Assistant does not read these files — use Tools → Connect JetBrains AI Assistant.",
                         "Cachly Brain — Setup Complete",
                     )
                 }

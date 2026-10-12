@@ -65,6 +65,12 @@
             <add-to-group group-id="ToolsMenu" anchor="last"/>
             <keyboard-shortcut keymap="$default" first-keystroke="ctrl shift B"/>
         </action>
+        <action id="Cachly.ConnectAiAssistant"
+                class="dev.cachly.brain.ConnectAiAssistantAction"
+                text="Connect JetBrains AI Assistant"
+                description="Add the cachly MCP server to JetBrains AI Assistant so its chat can recall and store lessons">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
         <action id="Cachly.SetupBrain"
                 class="dev.cachly.brain.SetupBrainAction"
                 text="Set Up AI Files"

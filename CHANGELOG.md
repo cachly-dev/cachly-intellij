@@ -2,6 +2,16 @@
 
 ---
 
+## [0.8.5] – 2026-10-12 — *"AI Assistant gets the Brain tools"*
+
+### Fixed
+- **JetBrains AI Assistant can now use your Brain.** AI Assistant reads MCP servers only from its own settings, not from `.mcp.json` or `.junie/mcp/mcp.json`. So its chat never had a cachly tool, even with a connected Brain. After connecting, the plugin now offers to connect AI Assistant:
+  - **IDE 2025.3 and newer:** one click adds cachly to `~/.ai/mcp/mcp.json`, the file AI Assistant reads. AI Assistant then asks you to enable the server; that click stays yours. Other servers in the file stay untouched, and the file is only written when the cachly entry is missing or different.
+  - **IDE 2024.1 to 2025.2:** the plugin copies the server config to the clipboard and opens Settings | Tools | AI Assistant | Model Context Protocol (MCP). Click Add, paste it, then OK and Apply.
+  - On Windows the server starts through `cmd /c npx`, because the IDE starts it without a shell.
+  - The API key stays out of the config when `~/.cachly/credentials.json` holds it.
+- The offer appears at most once per IDE session, only when AI Assistant is installed and cachly is missing there. "Don't show again" and quiet mode turn it off. **Tools → Connect JetBrains AI Assistant** does the same at any time.
+
 ## [0.8.4] – 2026-10-11 — *"JetBrains AI Assistant reads the Brain protocol"*
 
 ### Security
