@@ -34,9 +34,12 @@
                 implementation="dev.cachly.brain.FrameworkDetectionStartup"/>
         <postStartupActivity
                 implementation="dev.cachly.brain.ProactiveRecallStartup"/>
+        <!-- isLogByDefault="true": Der Hinweis zur AI-Assistant-Anbindung verschwand
+             sonst spurlos, wenn man ihn zu frueh wegklickte. Im Ereignisprotokoll
+             bleibt er lesbar. -->
         <notificationGroup id="Cachly Brain Ambient"
                            displayType="BALLOON"
-                           isLogByDefault="false"/>
+                           isLogByDefault="true"/>
     </extensions>
 
     <actions>

@@ -171,12 +171,13 @@ private class BriefingDialog(
         val matchedNote = if (matchedLessons > warnings.size) {
             " &nbsp;·&nbsp; top <b>${warnings.size}</b> of <b>$matchedLessons</b> matched lessons"
         } else ""
-        val headerHtml = """
-            <html>
+        // htmlText statt trimIndent: siehe HtmlText.kt (Text muss mit <html> beginnen).
+        val headerHtml = htmlText(
+            """
             <h2>Brain warnings for <code>${escHtml(relPath)}</code></h2>
             <p><b>${warnings.size}</b> warning${if (warnings.size == 1) "" else "s"}$matchedNote</p>
-            </html>
-        """.trimIndent()
+            """,
+        )
 
         val contentPanel = JPanel()
         contentPanel.layout = BoxLayout(contentPanel, BoxLayout.Y_AXIS)
@@ -207,14 +208,15 @@ private class BriefingDialog(
                 "<br/><span style=\"color:gray;font-size:11px;\">$prov</span>"
             } else ""
 
-            val cardHtml = """
-                <html>
+            // Problem und Fix sind oft mehrzeilig — mit trimIndent zeigte das Fenster dann rohes HTML.
+            val cardHtml = htmlText(
+                """
                 <div style="padding:6px 0">
                 <b>$outcomeIcon ${escHtml(w.topic)}</b> &nbsp; $sevIcon ${escHtml(w.severity)}${if (pct > 0) " &nbsp;·&nbsp; $pct% confidence" else ""}
                 $why$problem$fix$provHtml
                 </div><hr/>
-                </html>
-            """.trimIndent()
+                """,
+            )
             contentPanel.add(JLabel(cardHtml))
         }
 

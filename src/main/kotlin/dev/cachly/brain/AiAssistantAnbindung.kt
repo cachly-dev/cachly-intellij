@@ -29,9 +29,16 @@ import java.io.File
  *
  *  - Ab Build 253 (2025.3) liest AI Assistant die globale Datei
  *    ~/.ai/mcp/mcp.json (Registry-Schluessel llm.mcp.client.global.mcp.json.path).
- *    Ein neuer Server darin startet ABGESCHALTET, und die IDE fragt mit
- *    "Enable Server" nach. Diesen Klick nimmt das Plugin nicht ab: Er ist die
- *    Sicherheitsabfrage der IDE.
+ *    Ein neuer Server darin startet ABGESCHALTET. Eine IDE-Meldung "Enable
+ *    Server" gab es in der echten Probe (IntelliJ IDEA 2025.3, 12.10.2026)
+ *    NIE; 0.8.5 versprach sie trotzdem. Der Weg, der funktioniert: MCP-Seite
+ *    oeffnen, bei cachly den Haken setzen, OK. Diesen Haken nimmt das Plugin
+ *    nicht ab: Er ist die Sicherheitsabfrage der IDE.
+ *    Unter Windows bemerkt AI Assistant eine geaenderte mcp.json erst nach
+ *    einem IDE-Neustart (gemessen: Datei geleert, Server lief unveraendert
+ *    weiter; nach dem Neustart stand cachly abgeschaltet auf der Seite).
+ *    Vermutete Ursache: Er vergleicht `C:\...` mit `C:/...`. Der erste Start
+ *    brauchte 34 bis 39 s nach dem Haken (npx-Zwischenspeicher leer).
  *  - 241 bis 252 kennen keine solche Datei. Das Plugin kopiert die Einstellung
  *    in die Zwischenablage und oeffnet die Seite Settings | Tools | AI Assistant |
  *    Model Context Protocol (MCP). Dort: Add, einfuegen, OK, Apply.
@@ -45,6 +52,7 @@ object AiAssistantAnbindung {
     private const val AI_ASSISTANT = "com.intellij.ml.llm"
     private const val GROUP = "Cachly Brain Ambient"
     private const val MCP_SEITE = "Model Context Protocol (MCP)"
+    internal const val MCP_KLICKWEG = "Tools → AI Assistant → Model Context Protocol (MCP)"
     private const val GLOBAL_SCHLUESSEL = "llm.mcp.client.global.mcp.json.path"
     private const val GLOBAL_VORGABE = ".ai/mcp/mcp.json"
     private const val PAKET = "@cachly-dev/mcp-server@latest"
@@ -67,8 +75,20 @@ object AiAssistantAnbindung {
     fun globaleDatei(heim: File = heim()): File {
         val rel = runCatching { Registry.stringValue(GLOBAL_SCHLUESSEL) }.getOrNull()
             ?.takeIf { it.isNotBlank() } ?: GLOBAL_VORGABE
-        return File(heim, rel)
+        return loeseAuf(heim, rel)
     }
+
+    /**
+     * So rechnet AI Assistant selbst: `Paths.get(heim).resolve(rel)`. Ein
+     * ABSOLUTER Wert gewinnt dort. `File(heim, rel)` haengte ihn dagegen an den
+     * Heimordner an — die Datei landete an einem Ort, den AI Assistant nie liest,
+     * [hatCachly] fand sie nicht, und das Angebot kam bei jedem Start wieder.
+     * Ein Wert, den der Dateisystemtreiber nicht als Pfad kennt, faellt auf die
+     * Vorgabe zurueck.
+     */
+    internal fun loeseAuf(heim: File, rel: String): File =
+        runCatching { heim.toPath().resolve(rel).toFile() }
+            .getOrElse { heim.toPath().resolve(GLOBAL_VORGABE).toFile() }
 
     /**
      * Der Servereintrag. Unter Windows ueber `cmd /c`: Die IDE startet den
@@ -159,8 +179,8 @@ object AiAssistantAnbindung {
         val n = if (liestGlobaleDatei()) {
             group.createNotification(
                 "Cachly Brain — connect JetBrains AI Assistant",
-                "AI Assistant does not see your Brain yet. One click adds cachly as an MCP server; " +
-                    "AI Assistant then asks you to enable it.",
+                "AI Assistant does not see your Brain yet. One click adds cachly to its MCP servers; " +
+                    "you then tick cachly on the MCP settings page.",
                 NotificationType.INFORMATION,
             ).addAction(NotificationAction.createSimpleExpiring("Connect AI Assistant") { verbinden(project) })
         } else {
@@ -176,6 +196,26 @@ object AiAssistantAnbindung {
         n.addAction(NotificationAction.createSimpleExpiring("Don't show again") {
             CachlySettings.getInstance().state.aiAssistantHinweisAus = true
         }).notify(project)
+    }
+
+    /**
+     * Der Hinweis nach dem Eintragen. Der Klickweg nennt die Bezeichnungen der
+     * Seite so, wie sie in der IDE stehen. Ueber den Schalter "Automatically
+     * enable new and changed MCP servers" (Vorgabe: aus) steht hier nur, dass es
+     * ihn gibt: Ob er die Neustart-Luecke unter Windows schliesst, ist nicht
+     * geprueft. Der Text ist HTML (Zeilenumbruch `<br>`); die Gruppe schreibt
+     * ihn ins Ereignisprotokoll, wo er nach dem Ausblenden nachlesbar bleibt.
+     */
+    internal fun hinweisText(pfad: String, ergebnis: Ergebnis): String {
+        val schritte = "(1) Open MCP settings ($MCP_KLICKWEG), tick cachly, press OK. " +
+            "The first start can take ~40 s.<br>" +
+            "(2) cachly missing in the list? Restart the IDE once, it then reads the file."
+        return if (ergebnis == Ergebnis.GLEICH) {
+            "cachly is already in $pfad. If AI Assistant still has no cachly tools:<br>$schritte"
+        } else {
+            "cachly is now in $pfad.<br>$schritte<br>" +
+                "Optional: tick \"Automatically enable new and changed MCP servers\" on that page."
+        }
     }
 
     /** Vom Hinweis und von Tools → Connect JetBrains AI Assistant. */
@@ -206,13 +246,7 @@ object AiAssistantAnbindung {
                 }).notify(project)
                 return@executeOnPooledThread
             }
-            val text = if (ergebnis == Ergebnis.GLEICH) {
-                "cachly is already in ${datei.path}. If AI Assistant still has no cachly tools, enable the server " +
-                    "in Settings | Tools | AI Assistant | MCP."
-            } else {
-                "cachly is now in ${datei.path}. Click \"Enable Server\" in the AI Assistant notification, " +
-                    "or enable it in Settings | Tools | AI Assistant | MCP. Then ask AI Assistant something about this project."
-            }
+            val text = hinweisText(datei.path, ergebnis)
             group.createNotification("Cachly Brain — AI Assistant", text, NotificationType.INFORMATION)
                 .addAction(NotificationAction.createSimpleExpiring("Open MCP settings") { oeffnen(project) })
                 .notify(project)

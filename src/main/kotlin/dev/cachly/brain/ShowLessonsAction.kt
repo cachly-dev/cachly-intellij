@@ -64,12 +64,13 @@ private class LessonsDialog(
         val shownNote = if (health.lessons > health.topLessons.size)
             " &nbsp;·&nbsp; showing the <b>${health.topLessons.size}</b> most-recalled"
         else ""
-        val headerHtml = """
-            <html>
+        // htmlText statt trimIndent: siehe HtmlText.kt (Text muss mit <html> beginnen).
+        val headerHtml = htmlText(
+            """
             <h2>📖 Lessons</h2>
             <p><b>${health.lessons}</b> lessons &nbsp;·&nbsp; <b>${health.totalRecalls}</b> $recallScope$shownNote</p>
-            </html>
-        """.trimIndent()
+            """,
+        )
         val headerLabel = JLabel(headerHtml)
 
         val contentPanel = JPanel()
@@ -87,26 +88,29 @@ private class LessonsDialog(
                 else -> "🟡"
             }
             val date = formatDate(l.ts)
-            val lessonHtml = """
-                <html>
+            // what_worked ist oft mehrzeilig — mit trimIndent zeigte das Fenster dann rohes HTML.
+            val lessonHtml = htmlText(
+                """
                 <div style="padding:6px 0">
                 <b>$icon ${escHtml(l.topic)}</b> &nbsp; $sevIcon ${escHtml(l.severity ?: "minor")} &nbsp; · &nbsp;
                 ${l.recallCount}× recalled &nbsp; · &nbsp; $date${l.author?.let { " &nbsp; · &nbsp; by ${escHtml(it)}" } ?: ""}<br/>
                 ✔ ${escHtml(l.whatWorked)}
                 </div><hr/>
-                </html>
-            """.trimIndent()
+                """,
+            )
             contentPanel.add(JLabel(lessonHtml))
         }
 
         val scroll = JScrollPane(contentPanel)
         scroll.verticalScrollBarPolicy = JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED
 
-        val helpHtml = """
-            <html><p style="color:gray;font-size:11px;">
+        val helpHtml = htmlText(
+            """
+            <p style="color:gray;font-size:11px;">
             💡 Lessons are created when an AI assistant calls <code>learn_from_attempts()</code> via the Cachly MCP server.
-            Recalls are counted only when a saved lesson is actually reused — token savings are an estimate (~1,200 per reused lesson).</p></html>
-        """.trimIndent()
+            Recalls are counted only when a saved lesson is actually reused — token savings are an estimate (~1,200 per reused lesson).</p>
+            """,
+        )
 
         panel.add(headerLabel, BorderLayout.NORTH)
         panel.add(scroll, BorderLayout.CENTER)

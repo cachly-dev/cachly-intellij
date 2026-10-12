@@ -3,12 +3,14 @@ package dev.cachly.brain
 import com.intellij.notification.NotificationGroupManager
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.startup.StartupActivity
+import com.intellij.openapi.startup.ProjectActivity
 import com.intellij.openapi.vfs.LocalFileSystem
 
-class FrameworkDetectionStartup : StartupActivity {
+// ProjectActivity statt StartupActivity (0.8.6): Ab IDE 253 meldet die Altform
+// "Migrate to ProjectActivity". Ablauf unveraendert.
+class FrameworkDetectionStartup : ProjectActivity {
 
-    override fun runActivity(project: Project) {
+    override suspend fun execute(project: Project) {
         AmbientLearningService.getInstance(project).install()
 
         val projectPath = project.basePath ?: return

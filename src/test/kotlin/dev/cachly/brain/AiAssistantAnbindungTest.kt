@@ -89,6 +89,52 @@ class AiAssistantAnbindungTest {
     }
 
     @Test
+    fun `relative registry value is resolved below the home folder`() {
+        val heim = tmp.newFolder("heim-rel")
+        val datei = AiAssistantAnbindung.loeseAuf(heim, ".ai/mcp/mcp.json")
+        assertEquals(File(heim, ".ai/mcp/mcp.json").canonicalFile, datei.canonicalFile)
+    }
+
+    @Test
+    fun `absolute registry value wins over the home folder, like in AI Assistant`() {
+        // AI Assistant rechnet Paths.get(home).resolve(rel): ein absoluter Wert gewinnt.
+        // Vor 0.8.6 haengte File(heim, rel) ihn an den Heimordner an.
+        val heim = tmp.newFolder("heim-abs")
+        val absolut = File(tmp.newFolder("anderswo"), "mcp.json")
+        val datei = AiAssistantAnbindung.loeseAuf(heim, absolut.absolutePath)
+        assertEquals(absolut.canonicalFile, datei.canonicalFile)
+        assertFalse("unter dem Heimordner gelandet", datei.canonicalPath.startsWith(heim.canonicalPath))
+    }
+
+    @Test
+    fun `entry is written to and found at an absolute path`() {
+        // Folge des alten Fehlers: geschrieben und gesucht wurde an der falschen Stelle,
+        // hatCachly() blieb falsch und das Angebot kam bei jedem Start wieder.
+        val heim = tmp.newFolder("heim-abs2")
+        val absolut = File(tmp.newFolder("ziel"), "mcp.json")
+        val datei = AiAssistantAnbindung.loeseAuf(heim, absolut.absolutePath)
+        assertEquals(
+            AiAssistantAnbindung.Ergebnis.NEU,
+            AiAssistantAnbindung.eintragen(datei, AiAssistantAnbindung.serverEintrag(url, instanz, null, false)),
+        )
+        assertTrue(absolut.exists())
+        assertTrue(AiAssistantAnbindung.hatCachly(AiAssistantAnbindung.loeseAuf(heim, absolut.absolutePath)))
+    }
+
+    @Test
+    fun `hint names the real click path and not the notification that never came`() {
+        for (e in listOf(AiAssistantAnbindung.Ergebnis.NEU, AiAssistantAnbindung.Ergebnis.GEAENDERT, AiAssistantAnbindung.Ergebnis.GLEICH)) {
+            val text = AiAssistantAnbindung.hinweisText("C:\\Users\\x\\.ai\\mcp\\mcp.json", e)
+            assertFalse("Enable Server kam in der Probe nie: $text", text.contains("Enable Server"))
+            assertTrue(text.contains("Open MCP settings (Tools → AI Assistant → Model Context Protocol (MCP)), tick cachly, press OK."))
+            assertTrue(text.contains("cachly missing in the list? Restart the IDE once, it then reads the file."))
+            assertTrue(text.contains("~40 s"))
+        }
+        val neu = AiAssistantAnbindung.hinweisText("p", AiAssistantAnbindung.Ergebnis.NEU)
+        assertTrue(neu.contains("Automatically enable new and changed MCP servers"))
+    }
+
+    @Test
     fun `broken json is not overwritten`() {
         val datei = File(tmp.newFolder("kaputt"), "mcp.json")
         datei.writeText("{ das ist kein json")

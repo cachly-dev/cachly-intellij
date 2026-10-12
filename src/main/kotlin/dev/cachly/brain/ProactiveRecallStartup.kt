@@ -5,7 +5,7 @@ import com.intellij.notification.NotificationGroupManager
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.startup.StartupActivity
+import com.intellij.openapi.startup.ProjectActivity
 
 /**
  * Read-side "ambient recall" for JetBrains: on project open, fetch the Brain's
@@ -24,9 +24,13 @@ import com.intellij.openapi.startup.StartupActivity
  * All network I/O runs off the EDT; any failure is a silent no-op — a briefing
  * must never block or slow project startup.
  */
-class ProactiveRecallStartup : StartupActivity {
+class ProactiveRecallStartup : ProjectActivity {
 
-    override fun runActivity(project: Project) {
+    // ProjectActivity statt StartupActivity (0.8.6): Ab IDE 253 meldet die
+    // Altform "Migrate to ProjectActivity" und das Onboarding wartete hinter
+    // offenen Dialogen. Ablauf unveraendert; die Arbeit mit Netz laeuft wie
+    // bisher auf einem eigenen Thread.
+    override suspend fun execute(project: Project) {
         // Install the per-file briefing listener unconditionally — it re-checks
         // the proactiveBriefing toggle on every event, so flipping the setting
         // takes effect without a restart.

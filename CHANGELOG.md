@@ -2,6 +2,19 @@
 
 ---
 
+## [0.8.6] – 2026-10-12 — *"The AI Assistant steps match the IDE"*
+
+Found in a real run on IntelliJ IDEA 2025.3 (build 253) with AI Assistant 253.
+
+### Fixed
+- **The AI Assistant hint now names the steps that work.** 0.8.5 promised an "Enable Server" message from the IDE. It never appeared. What works: open Tools → AI Assistant → Model Context Protocol (MCP), tick cachly, press OK. On Windows, AI Assistant notices a changed `mcp.json` only after an IDE restart, so if cachly is missing in the list, restart the IDE once. The first start can take ~40 s (measured: 34 to 39 s with an empty npx cache). The hint also mentions the option "Automatically enable new and changed MCP servers" on that page, and the Open MCP settings button stays.
+- **The hint stays readable.** The notification group now writes to the Event Log, so the hint is still there after a click or a timeout.
+- **A custom `llm.mcp.client.global.mcp.json.path` works.** An absolute value was appended to the home folder, so the file landed where AI Assistant never reads, cachly was not found there, and the offer came back at every start. The plugin now resolves the path the way AI Assistant does: an absolute value wins.
+- **The Brain Health window shows the overview, not its HTML source.** The header line read `<html> <h2>Brain Overview</h2> <table ...` as plain text. The text was built with `trimIndent()` after multi-line parts were inserted, which left spaces in front of `<html>`, and Swing renders HTML only when the text starts with `<html>`. This was not specific to IDE 2025.3. The same construction in the Show Lessons window (lessons with a multi-line "what worked") and in the file warning window is fixed too.
+
+### Changed
+- `ProactiveRecallStartup` and `FrameworkDetectionStartup` now use `ProjectActivity` instead of the old `StartupActivity`. IDE 253 logged "Migrate to ProjectActivity", and onboarding waited behind open dialogs. Behaviour is the same.
+
 ## [0.8.5] – 2026-10-12 — *"AI Assistant gets the Brain tools"*
 
 ### Fixed
