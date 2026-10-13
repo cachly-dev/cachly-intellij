@@ -23,7 +23,35 @@ object CachlyInstructionWriter {
     private const val BRAIN_END = "<!-- cachly-brain-end -->"
     private const val CI_BRAIN_MARKER = "cachly-brain"
 
-    data class Result(val written: List<String>, val skipped: List<String>)
+    /**
+     * Was mit dem Schluessel im Heimordner geschah. In KEINEM Fall steht er danach in einer
+     * Projektdatei.
+     */
+    enum class HeimAblage {
+        /** Neu in ~/.cachly/credentials.json geschrieben. */
+        GESCHRIEBEN,
+        /** Lag schon so dort. */
+        UNVERAENDERT,
+        /** Dort liegt ein ANDERER Schluessel; nichts wurde veraendert. Der Mensch entscheidet. */
+        KONFLIKT,
+        /** Nicht schreibbar (z. B. Heimordner gesperrt). */
+        FEHLER,
+    }
+
+    /**
+     * [bereinigt]: Projektdateien, aus denen ein Schluessel entfernt wurde, den eine
+     * aeltere Fassung (bis 0.8.6) dort abgelegt hatte.
+     * [nochImProjekt]: Projektdateien, die einen solchen Schluessel noch tragen und deshalb
+     * nicht angefasst wurden, weil er (noch) nicht im Heimordner liegt. Wird er dort
+     * abgelegt (siehe [HeimAblage.KONFLIKT]), raeumt ein zweiter Lauf von [writeAll] auf.
+     */
+    data class Result(
+        val written: List<String>,
+        val skipped: List<String>,
+        val heim: HeimAblage = HeimAblage.UNVERAENDERT,
+        val bereinigt: List<String> = emptyList(),
+        val nochImProjekt: List<String> = emptyList(),
+    )
 
     /** Walk up from [start] to find the directory containing a `.git` entry. */
     fun findGitRoot(start: File): File? {
@@ -34,6 +62,23 @@ object CachlyInstructionWriter {
         }
         return null
     }
+
+    /** Ein echter Schluessel: nicht leer, kein Platzhalter wie `${user_config.api_key}` oder YOUR_API_KEY. */
+    internal fun echterSchluessel(v: Any?): String? {
+        val k = (v as? String)?.trim() ?: return null
+        if (k.isEmpty() || k == "YOUR_API_KEY" || k.contains('←') || Regex("""^\$\{[^}]*}$""").matches(k)) return null
+        return k
+    }
+
+    private fun credentialsDatei(heim: File) = File(heim, ".cachly/credentials.json")
+
+    private fun leseCredentials(heim: File): MutableMap<String, Any?>? = runCatching {
+        val datei = credentialsDatei(heim)
+        if (datei.exists()) parseJsoncObject(datei.readText().trimStart(Char(0xFEFF))) else null
+    }.getOrNull()
+
+    /** Der Schluessel, der im Heimordner liegt, oder null. Wirft nie. */
+    internal fun leseHeimSchluessel(heim: File): String? = echterSchluessel(leseCredentials(heim)?.get("apiKey"))
 
     /**
      * Legt den Schluessel in `<heim>/.cachly/credentials.json` ab — dieselbe
@@ -47,19 +92,39 @@ object CachlyInstructionWriter {
      * Projektdateien heraus; das Plugin zog nicht nach.
      *
      * Liegt dort schon ein ANDERER Schluessel, bleibt er stehen und es kommt
-     * false zurueck: Der Server wuerde sonst mit dem falschen Konto sprechen.
-     * Dann schreibt writeAll den Schluessel wie bisher ins Projekt.
+     * [HeimAblage.KONFLIKT] zurueck: Der Server wuerde sonst mit dem falschen
+     * Konto sprechen. Bis 0.8.6 schrieb writeAll den Schluessel dann "wie
+     * bisher" ins Projekt — genau die Datei, die `git add .` einsammelt
+     * (12.10.2026). Jetzt kommt er auch dann NICHT ins Projekt; der Mensch
+     * entscheidet (SetupBrainAction), und mit [ersetzen] = true wird der
+     * gespeicherte Schluessel ersetzt.
      */
-    internal fun speichereSchluesselImHeim(apiKey: String, instanceId: String, heim: File): Boolean = runCatching {
-        val datei = File(heim, ".cachly/credentials.json")
-        if (datei.exists()) {
-            val alt = parseJsoncObject(datei.readText())["apiKey"] as? String
-            if (alt == apiKey) return@runCatching true
-            if (!alt.isNullOrBlank()) return@runCatching false
+    internal fun legeSchluesselImHeimAb(
+        apiKey: String,
+        instanceId: String,
+        heim: File,
+        ersetzen: Boolean = false,
+    ): HeimAblage = runCatching {
+        val key = echterSchluessel(apiKey) ?: return@runCatching HeimAblage.FEHLER
+        val datei = credentialsDatei(heim)
+        val alt = leseCredentials(heim)
+        val altKey = echterSchluessel(alt?.get("apiKey"))
+        val instanz = instanceId.trim().takeIf { it.isNotEmpty() }
+
+        val inhalt: Map<String, Any?> = if (altKey == key) {
+            // Derselbe Schluessel: nur die Instanz nachtragen, wenn sie fehlt. Eine vorhandene
+            // bleibt — sie gehoert zu diesem Konto.
+            if (instanz == null || echterSchluessel(alt?.get("instanceId")) != null) return@runCatching HeimAblage.UNVERAENDERT
+            LinkedHashMap(alt).apply { put("apiKey", key); put("instanceId", instanz) }
+        } else {
+            if (altKey != null && !ersetzen) return@runCatching HeimAblage.KONFLIKT
+            // Neuer Schluessel: eine alte Instanz daneben waere eine falsche Paarung (sie kann zu
+            // einem anderen Konto gehoeren) — wie saveApiKey im MCP-Server.
+            linkedMapOf<String, Any?>("apiKey" to key).apply { if (instanz != null) put("instanceId", instanz) }
         }
         datei.parentFile.mkdirs()
         val tmp = File(datei.parentFile, "credentials.json.tmp")
-        tmp.writeText(toJson(linkedMapOf("apiKey" to apiKey, "instanceId" to instanceId), 0))
+        tmp.writeText(toJson(inhalt, 0))
         // Nur fuer den Besitzer lesbar (wie chmod 0600 im MCP-Server; unter Windows best effort).
         tmp.setReadable(false, false); tmp.setReadable(true, true)
         tmp.setWritable(false, false); tmp.setWritable(true, true)
@@ -67,8 +132,25 @@ object CachlyInstructionWriter {
             tmp.toPath(), datei.toPath(),
             java.nio.file.StandardCopyOption.REPLACE_EXISTING,
         )
-        true
-    }.getOrDefault(false)
+        HeimAblage.GESCHRIEBEN
+    }.getOrDefault(HeimAblage.FEHLER)
+
+    /** Wie [legeSchluesselImHeimAb], nur ja/nein: Liegt der Schluessel jetzt im Heimordner? (AiAssistantAnbindung) */
+    internal fun speichereSchluesselImHeim(apiKey: String, instanceId: String, heim: File): Boolean =
+        legeSchluesselImHeimAb(apiKey, instanceId, heim).let { it == HeimAblage.GESCHRIEBEN || it == HeimAblage.UNVERAENDERT }
+
+    /** Der Schluessel, den eine aeltere Fassung in den cachly-Eintrag einer MCP-Datei geschrieben hat. */
+    private fun schluesselImMcpEintrag(config: Map<String, Any?>): String? {
+        val eintrag = (config["mcpServers"] as? Map<*, *>)?.get("cachly") as? Map<*, *>
+        return echterSchluessel((eintrag?.get("env") as? Map<*, *>)?.get("CACHLY_JWT"))
+    }
+
+    private val HOOK_SCHLUESSEL = Regex("""process\.env\.CACHLY_JWT = '((?:[^'\\]|\\.)*)'""")
+    private val HOOK_ESCAPE = Regex("""\\(.)""")
+
+    /** Der Schluessel, den eine aeltere Fassung in ein Hook-Skript geschrieben hat (`process.env.CACHLY_JWT = '...'`). */
+    internal fun schluesselImHookSkript(text: String): String? =
+        echterSchluessel(HOOK_SCHLUESSEL.find(text)?.groupValues?.get(1)?.let { raw -> HOOK_ESCAPE.replace(raw) { it.groupValues[1] } })
 
     fun writeAll(
         projectPath: String,
@@ -81,7 +163,15 @@ object CachlyInstructionWriter {
         val root = findGitRoot(start) ?: start
         val written = mutableListOf<String>()
         val skipped = mutableListOf<String>()
-        val schluesselImHeim = speichereSchluesselImHeim(apiKey, instanceId, heim)
+        val bereinigt = mutableListOf<String>()
+        val nochImProjekt = mutableListOf<String>()
+        // Der Schluessel kommt in den Heimordner und NIE ins Projekt — auch nicht, wenn dort ein
+        // anderer Schluessel liegt oder der Heimordner nicht beschreibbar ist (Ergebnis KONFLIKT / FEHLER;
+        // dann fragt SetupBrainAction). Altbestand (Schluessel aus 0.8.6 und frueher) wird nur
+        // entfernt, wenn er jetzt im Heimordner liegt: so geht nichts verloren.
+        val ablage = legeSchluesselImHeimAb(apiKey, instanceId, heim)
+        val heimSchluessel = leseHeimSchluessel(heim)
+        fun darfRaus(alt: String) = alt == heimSchluessel
 
         // 1. MCP server configs — merge the cachly server, preserve everything else.
         //    .mcp.json                is read by Claude Code.
@@ -97,21 +187,28 @@ object CachlyInstructionWriter {
                 val mcpFile = File(root, rel)
                 mcpFile.parentFile?.mkdirs()
                 val existing = if (mcpFile.exists()) parseJsoncObject(mcpFile.readText()) else mutableMapOf()
+                val altSchluessel = schluesselImMcpEintrag(existing)
+                if (altSchluessel != null && !darfRaus(altSchluessel)) {
+                    // Der Schluessel liegt (noch) nicht im Heimordner: Datei in Ruhe lassen, sonst ginge er verloren.
+                    nochImProjekt.add(rel)
+                    return@runCatching
+                }
                 @Suppress("UNCHECKED_CAST")
                 val servers = (existing["mcpServers"] as? MutableMap<String, Any?>) ?: mutableMapOf()
                 servers["cachly"] = linkedMapOf(
                     "command" to "npx",
                     "args" to listOf("-y", "@cachly-dev/mcp-server@latest"),
+                    // Adresse und Instanz, nie der Schluessel: der Server findet ihn selbst
+                    // (resolveApiKey: Umgebung, dann ~/.cachly/credentials.json).
                     "env" to linkedMapOf<String, String>().apply {
                         put("CACHLY_API_URL", baseUrl)
-                        // Nur noch, wenn der Schluessel NICHT im Heimordner liegt.
-                        if (!schluesselImHeim) put("CACHLY_JWT", apiKey)
                         put("CACHLY_BRAIN_INSTANCE_ID", instanceId)
                     },
                 )
                 existing["mcpServers"] = servers
                 mcpFile.writeText(toJson(existing, 0))
                 written.add(rel)
+                if (altSchluessel != null) bereinigt.add(rel)
             }.onFailure { skipped.add(rel) }
         }
 
@@ -214,13 +311,20 @@ object CachlyInstructionWriter {
             for ((event, name) in events) {
                 val f = File(hookDir, name)
                 scriptPaths[event] = f.absolutePath.replace('\\', '/')
-                // Schluessel nur noch im Skript, wenn er nicht im Heimordner liegt;
-                // ambient-recall liest ihn sonst aus ~/.cachly/credentials.json.
-                val script = buildAmbientHook(event, instanceId, if (schluesselImHeim) null else apiKey) + "\n"
+                val altSchluessel = if (f.exists()) schluesselImHookSkript(f.readText()) else null
+                if (altSchluessel != null && !darfRaus(altSchluessel)) {
+                    // Wie bei .mcp.json: ein Skript mit einem Schluessel, der nicht im Heimordner liegt, bleibt stehen.
+                    nochImProjekt.add(".claude/hooks/$name")
+                    continue
+                }
+                // Nie ein Schluessel im Skript: ambient-recall liest ihn aus der Umgebung oder
+                // aus ~/.cachly/credentials.json.
+                val script = buildAmbientHook(event, instanceId) + "\n"
                 if (!f.exists() || f.readText() != script) {
                     f.writeText(script)
                     runCatching { f.setExecutable(true, false) }
                     changedAny = true
+                    if (altSchluessel != null) bereinigt.add(".claude/hooks/$name")
                 }
             }
 
@@ -285,7 +389,7 @@ object CachlyInstructionWriter {
             }
         }.onFailure { skipped.add("ci-config") }
 
-        return Result(written, skipped)
+        return Result(written, skipped, ablage, bereinigt, nochImProjekt)
     }
 
     /** Detect whether origin points at GitHub or GitLab by reading .git/config. */
@@ -378,10 +482,11 @@ object CachlyInstructionWriter {
      * sdk/mcp/src/ambient-hooks.ts (cachly-dev/cachly) so every installer
      * (MCP init, VS Code, IntelliJ) upgrades the same scripts in place.
      */
-    fun buildAmbientHook(event: String, instanceId: String, apiKey: String?): String {
+    fun buildAmbientHook(event: String, instanceId: String): String {
         // v3: cross-platform Node script — the v1/v2 POSIX shell hooks silently
         // never ran on native Windows (no /bin/sh).
         fun js(v: String) = v.replace("\\", "\\\\").replace("'", "\\'")
+        // Kein Schluessel im Skript (12.10.2026): ein Hook-Skript liegt unter .claude/hooks/ im Projekt.
         val lines = mutableListOf(
             "#!/usr/bin/env node",
             "// cachly Ambient Recall — $event v3",
@@ -391,7 +496,6 @@ object CachlyInstructionWriter {
             "import { spawn } from 'node:child_process';",
             "process.env.CACHLY_BRAIN_INSTANCE_ID = '${js(instanceId)}';",
         )
-        if (!apiKey.isNullOrBlank()) lines.add("process.env.CACHLY_JWT = '${js(apiKey)}';")
         lines.add("process.env.CACHLY_HOOK_EVENT = '${js(event)}';")
         lines.add("try {")
         lines.add("  const child = spawn('npx @cachly-dev/mcp-server@latest ambient-recall', { shell: true, stdio: ['inherit', 'inherit', 'ignore'] });")

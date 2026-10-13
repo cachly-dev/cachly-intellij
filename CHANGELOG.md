@@ -2,6 +2,12 @@
 
 ---
 
+## [0.8.7] – 2026-10-12 — *"The key stays out of the project, always"*
+
+### Security
+- **"Set Up AI Files" no longer writes your API key into the project, in any case.** 0.8.4 moved the key to `~/.cachly/credentials.json`, but kept one fallback: if that file already held a different key, the plugin wrote your key into `.mcp.json`, `.junie/mcp/mcp.json` and the `.claude/hooks/` scripts after all, files that `git add .` picks up and that end up on GitHub in public repositories. That fallback is gone. Now the plugin asks which key should be used for all projects, with two choices: **Use this key for all projects (replaces the stored one)** or **Keep the stored key**. Either way, no key goes into a project file. The same holds if `~/.cachly/credentials.json` cannot be written; the dialog then points you to `CACHLY_JWT` in your environment.
+- **Old keys are cleaned out of existing projects.** If an older version left your key in `.mcp.json`, `.junie/mcp/mcp.json` or a hook script, "Set Up AI Files" removes it as soon as the key is stored in `~/.cachly/credentials.json`, and the final dialog lists the files. While a different key is stored there, those files stay as they are, so the project keeps working; they are listed too, and choosing "Use this key for all projects" cleans them in the same run.
+
 ## [0.8.6] – 2026-10-12 — *"The AI Assistant steps match the IDE"*
 
 Found in a real run on IntelliJ IDEA 2025.3 (build 253) with AI Assistant 253.
