@@ -49,6 +49,12 @@
                 description="Get a Cachly Brain key — trial without an account, or link an existing one">
             <add-to-group group-id="ToolsMenu" anchor="last"/>
         </action>
+        <action id="Cachly.LinkAccount"
+                class="dev.cachly.brain.LinkAccountAction"
+                text="Link Account"
+                description="Move your test Brain into your cachly account — its lessons stay">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
         <action id="Cachly.ShowBrainHealth"
                 class="dev.cachly.brain.ShowBrainHealthAction"
                 text="Show Brain Health"

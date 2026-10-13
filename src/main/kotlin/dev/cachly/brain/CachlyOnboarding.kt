@@ -195,7 +195,7 @@ object CachlyOnboarding {
             ).addAction(
                 NotificationAction.createSimple("How to connect your AI") { BrowserUtil.browse(GUIDE) },
             ).addAction(
-                NotificationAction.createSimple("Link account") { startDeviceFlow(project) },
+                NotificationAction.createSimple("Link account") { linkAccount(project) },
             )
         } else {
             group.createNotification(
@@ -303,6 +303,87 @@ object CachlyOnboarding {
                     // "authorization_pending" and an unreadable answer both mean: keep waiting.
                 }
                 offerManualSetup(project, "The setup code expired before it was approved.")
+            }
+        }.queue()
+    }
+
+    /**
+     * "Link account". With a trial key the trial Brain moves into the account
+     * and keeps its lessons (TestBrainUebernahme). Until 0.8.7 this button ran
+     * [startDeviceFlow], which ends in the account's own, empty Brain — the
+     * trial lessons stayed behind. Without a trial key there is nothing to
+     * move, and the account sign-in runs as before.
+     */
+    fun linkAccount(project: Project) {
+        val testKey = CachlySettings.getInstance().state.apiKey.trim()
+        if (!TestBrainUebernahme.istTestSchluessel(testKey)) {
+            startDeviceFlow(project)
+            return
+        }
+        object : Task.Backgroundable(project, "Linking Cachly Brain to your account", true) {
+            override fun run(indicator: ProgressIndicator) {
+                val code = TestBrainUebernahme.starteAnmeldung()
+                if (code == null) {
+                    notify(project, "Linking could not start: the sign-in service did not answer. Nothing was changed.", NotificationType.WARNING)
+                    return
+                }
+                BrowserUtil.browse(code.adresse)
+                indicator.text = "Sign in and confirm code ${code.userCode} in the browser"
+                indicator.isIndeterminate = true
+
+                var schrittMs = code.intervallMs
+                var token: String? = null
+                while (token == null && System.currentTimeMillis() < code.frist) {
+                    if (indicator.isCanceled || project.isDisposed) return
+                    try {
+                        Thread.sleep(schrittMs)
+                    } catch (_: InterruptedException) {
+                        return
+                    }
+                    if (indicator.isCanceled) return
+                    when (val a = TestBrainUebernahme.frageAb(code)) {
+                        is TestBrainUebernahme.Abfrage.Token -> token = a.token
+                        TestBrainUebernahme.Abfrage.Warten -> Unit
+                        TestBrainUebernahme.Abfrage.Langsamer -> schrittMs += 5_000
+                        is TestBrainUebernahme.Abfrage.Fehler -> {
+                            notify(project, "The sign-in was not completed (${a.grund}). Nothing was changed.", NotificationType.WARNING)
+                            return
+                        }
+                    }
+                }
+                if (token == null) {
+                    notify(project, "The sign-in code expired before it was approved. Nothing was changed.", NotificationType.WARNING)
+                    return
+                }
+
+                indicator.text = "Moving your test Brain into your account"
+                val state = CachlySettings.getInstance().state
+                val apiBase = state.apiUrl.trimEnd('/').ifBlank { "https://api.cachly.dev" }
+                when (val ausgang = TestBrainUebernahme.uebernimm(apiBase, token, testKey)) {
+                    is TestBrainUebernahme.Ausgang.Fehlschlag ->
+                        notify(project, TestBrainUebernahme.fehlerText(ausgang), NotificationType.WARNING)
+                    is TestBrainUebernahme.Ausgang.Erfolg -> {
+                        val e = ausgang.ergebnis
+                        TestBrainUebernahme.speichereNeuenSchluessel(state, testKey, e)
+                        val bestaetigt = TestBrainUebernahme.brainImKonto(apiBase, e.apiKey, e.instanceId)
+                        notify(
+                            project,
+                            TestBrainUebernahme.erfolgsText(e, bestaetigt),
+                            if (bestaetigt) NotificationType.INFORMATION else NotificationType.WARNING,
+                        )
+                        // The Brain restarts with a new password (~20 s). The status
+                        // bar asks again after that, not at its next 300 s tick.
+                        if (e.brainRestarting) {
+                            indicator.text = "Waiting for the Brain to restart"
+                            try {
+                                Thread.sleep(25_000)
+                            } catch (_: InterruptedException) {
+                                return
+                            }
+                        }
+                        CachlyApiClient.fetchHealth()?.let { CachlyStatusBarWidget.showEverywhere(it) }
+                    }
+                }
             }
         }.queue()
     }

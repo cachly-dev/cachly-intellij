@@ -2,6 +2,20 @@
 
 ---
 
+## [0.8.8] – 2026-10-14 — *"Link Account keeps your lessons"*
+
+### Fixed
+- **Link Account now moves your test Brain into your account, with its lessons.** Until 0.8.7 the button signed you in and then connected the account's own Brain: a new, empty one. The lessons of the test Brain stayed behind, and the test key kept working. Now the plugin does what `npx @cachly-dev/mcp-server claim` does:
+  1. You sign in at auth.cachly.dev in the browser and confirm the code shown in the IDE.
+  2. The plugin sends that sign-in together with the test key to cachly. The test Brain moves into your account.
+  3. Every test key is revoked. The plugin stores the new key from your account, and `~/.cachly/credentials.json` too if it held the test key.
+  4. The message says "Lessons kept" only after the new key has reached the Brain.
+  5. The Brain restarts once with a new password (about 20 seconds); the status bar checks again after that.
+- If moving is not possible (for example, your account already has a free Brain), the message gives the reason and nothing is changed.
+
+### Added
+- **Tools → Link Account.** Until now the button existed only in the trial notification and was gone once the notification closed.
+
 ## [0.8.7] – 2026-10-12 — *"The key stays out of the project, always"*
 
 ### Security
