@@ -53,6 +53,8 @@ object ProactiveFileBriefing {
             object : FileEditorManagerListener {
                 override fun fileOpened(source: FileEditorManager, file: VirtualFile) {
                     if (!CachlySettings.getInstance().state.proactiveBriefing) return
+                    // Der Pfad der Datei geht nur mit Einwilligung ans Netz (GROW-035).
+                    if (!funktionJetzt()) return
                     if (!file.isInLocalFileSystem) return
                     schedule(project, file)
                 }

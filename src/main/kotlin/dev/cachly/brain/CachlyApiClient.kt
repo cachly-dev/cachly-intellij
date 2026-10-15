@@ -227,6 +227,8 @@ object CachlyApiClient {
         if (settings.apiKey.isBlank() || settings.instanceId.isBlank()) {
             return BrainHealth(status = "not_configured")
         }
+        // Ohne Einwilligung kein Aufruf — auch dieser erste nicht (GROW-035).
+        if (!darfFunktion(settings)) return BrainHealth(status = "not_configured")
 
         val baseUrl = settings.apiUrl.trimEnd('/')
         val id = settings.instanceId
@@ -345,6 +347,7 @@ object CachlyApiClient {
         if (queue.pendingCount() == 0) return
         val settings = CachlySettings.getInstance().state
         if (settings.apiKey.isBlank() || settings.instanceId.isBlank()) return
+        if (!darfFunktion(settings)) return
         val baseUrl = settings.apiUrl.trimEnd('/')
         val pending = queue.drainSnapshot()
         val failed = mutableListOf<OfflineLessonQueue.PendingLesson>()
@@ -369,6 +372,8 @@ object CachlyApiClient {
     fun fetchBriefing(relPath: String): BriefingResponse? {
         val settings = CachlySettings.getInstance().state
         if (settings.apiKey.isBlank() || settings.instanceId.isBlank()) return null
+        // Der Pfad der Datei verlaesst die IDE nur mit Einwilligung (GROW-035).
+        if (!darfFunktion(settings)) return null
         val baseUrl = settings.apiUrl.trimEnd('/')
         val body = gson.toJson(mapOf("event_type" to "file_open", "context" to relPath))
         val json = httpPost(
@@ -387,6 +392,8 @@ object CachlyApiClient {
      */
     fun trackEvent(event: String) {
         val settings = CachlySettings.getInstance().state
+        // Die Statistik ist eine eigene Frage, standardmaessig AUS (GROW-035).
+        if (!darfStatistik(settings)) return
         val baseUrl = settings.apiUrl.trimEnd('/')
         val body = gson.toJson(mapOf(
             "event" to event,
@@ -412,6 +419,7 @@ object CachlyApiClient {
     }
 
     private fun httpGet(url: String, apiKey: String): String? {
+        if (!funktionJetzt()) return null
         return try {
             val conn = URI(url).toURL().openConnection() as HttpURLConnection
             conn.connectTimeout = 5000
@@ -456,6 +464,7 @@ object CachlyApiClient {
      * checking only for 200 would have made this silently useless.
      */
     private fun httpPostAnon(url: String, body: String): String? {
+        if (!funktionJetzt()) return null
         return try {
             val conn = URI(url).toURL().openConnection() as HttpURLConnection
             conn.requestMethod = "POST"
@@ -563,6 +572,7 @@ object CachlyApiClient {
         body: String,
         okCodes: IntRange = 200..201,
     ): String? {
+        if (!funktionJetzt()) return null
         return try {
             val conn = URI(url).toURL().openConnection() as HttpURLConnection
             conn.requestMethod = "POST"

@@ -21,6 +21,7 @@ class ShowLessonsAction : AnAction("Show Lessons") {
     }
 
     fun showPanel(project: Project) {
+        if (!EinwilligungFrage.fuerAktion(project)) return
         // FIX: fetch off the EDT — network call must not block the UI thread.
         object : Task.Backgroundable(project, "Fetching Brain Lessons…", false) {
             private var health: BrainHealth? = null

@@ -5,7 +5,7 @@
 >
 > **This plugin puts that memory in front of you** — lessons learned, tokens saved, session history and brain health, right in your IDE's status bar. Works in every JetBrains IDE.
 >
-> **Nothing to sign up for.** On first start the plugin fetches a free trial brain by itself — no account, no credit card, no key to paste. Link an account later to keep the data. EU servers, GDPR.
+> **Nothing to sign up for.** Once you agree, the plugin fetches a free trial brain by itself — no account, no credit card, no key to paste. Link an account later to keep the data. EU servers, GDPR.
 
 <p align="center">
   <a href="https://plugins.jetbrains.com/plugin/32059-cachly-brain">
@@ -83,6 +83,26 @@ and rendered in [`../../docs/generated/surface-parity.md`](../../docs/generated/
 | API Key | Your Cachly API key (`cky_live_...`) from [cachly.dev](https://cachly.dev) |
 | Instance ID | Your Brain instance UUID |
 | Refresh Interval | Status bar refresh in seconds (default: 300) |
+| Use the Brain | Allows file briefings, lessons and health checks (talks to api.cachly.dev) |
+| Share usage statistics | Event names only, off unless you tick it |
+
+---
+
+## Privacy
+
+The plugin asks once, before it sends anything: one dialog, two questions.
+
+| Question | Default | What is sent |
+|----------|---------|--------------|
+| **Use the Brain** (file briefings, lessons, health checks) | on | The path of each file you open, relative to the project (for example `src/app/main.ts`), to look up matching lessons. The lessons you save or recall. Health checks while the IDE is in use. The request for a free trial Brain. **File contents are never sent.** |
+| **Share usage statistics** | off | The name of an event (for example `session_start`), the plugin version, your instance ID and your API key, so the event is counted for your account. Never file names, file contents or code. |
+
+- **Until you answer, nothing is sent.** Closing the dialog counts as "no" to both questions.
+- **Change it at any time:** Settings → Tools → Cachly Brain.
+- **Your API key** is kept in the password safe of your IDE, not in a settings file. A key stored in plain text by an earlier version (0.8.8 and older) is moved into the password safe on the first start and removed from the settings file.
+- The status bar asks the server only while the IDE is the active window.
+
+Details: [Privacy policy](https://cachly.dev/legal/datenschutz).
 
 ---
 
@@ -128,6 +148,7 @@ cd sdk/intellij
 ## Links
 
 - [cachly.dev](https://cachly.dev) — Dashboard & free signup
+- [Privacy policy](https://cachly.dev/legal/datenschutz) — what is sent, where it goes
 - [JetBrains guide](https://cachly.dev/docs/jetbrains) — what the plugin does, and how Claude Code, Junie or AI Assistant get the Brain
 - [AI Brain docs](https://cachly.dev/docs/ai-memory) — MCP server setup
 - [MCP Server npm](https://www.npmjs.com/package/@cachly-dev/mcp-server) — The brain backend

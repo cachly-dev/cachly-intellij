@@ -39,6 +39,10 @@ class SetupBrainAction : AnAction() {
             return
         }
 
+        // Die Dateien entstehen lokal. Nur das Nachholen der Instanz-ID geht ans Netz,
+        // und das nur mit Einwilligung (GROW-035).
+        if (settings.instanceId.isBlank() && !EinwilligungFrage.fuerAktion(project)) return
+
         object : Task.Backgroundable(project, "Setting up Cachly Brain files", false) {
             override fun run(indicator: ProgressIndicator) {
                 // A key without an instance id: fetch it instead of refusing —

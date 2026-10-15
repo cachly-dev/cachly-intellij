@@ -20,6 +20,9 @@ class BrainDoctorAction : AnAction() {
 
     override fun actionPerformed(e: AnActionEvent) {
         val project = e.project ?: return
+        // Ausdrueckliche Aktion: Sie sendet Anfragen an api.cachly.dev, also fragt sie
+        // zuerst, falls noch nicht beantwortet, und sendet nur bei einem Ja (GROW-035).
+        if (!EinwilligungFrage.fuerAktion(project)) return
 
         object : Task.Backgroundable(project, "Running Cachly Brain Doctor", false) {
             override fun run(indicator: ProgressIndicator) {
@@ -79,6 +82,7 @@ class BrainDoctorAction : AnAction() {
 
     /** Returns the HTTP status code, or -1 on a network-level error. */
     private fun httpStatus(url: String, apiKey: String): Int {
+        if (!funktionJetzt()) return -1
         return try {
             val conn = URI(url).toURL().openConnection() as HttpURLConnection
             conn.connectTimeout = 5000

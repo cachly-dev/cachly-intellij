@@ -62,9 +62,14 @@ object CachlyOnboarding {
      * attempts are used up.
      *
      * Runs its network I/O on a pooled thread; safe to call from the EDT.
+     *
+     * Ohne Einwilligung (GROW-035) laeuft hier NICHTS und es wird auch kein
+     * Versuch gezaehlt: `onboardingAttempts` ist gedeckelt, und ein Versuch, der
+     * nur an der fehlenden Antwort scheitert, wuerde spaeter fehlen.
      */
     fun maybeOnboard(project: Project) {
         val state = CachlySettings.getInstance().state
+        if (!darfFunktion(state)) return
         if (!needsKey()) return
         if (state.onboardingDeclined) return
         if (state.onboardingAttempts >= MAX_ATTEMPTS) {
@@ -73,6 +78,8 @@ object CachlyOnboarding {
         }
         ApplicationManager.getApplication().executeOnPooledThread {
             if (project.isDisposed) return@executeOnPooledThread
+            // Zwischen Start und Thread kann die Einwilligung widerrufen worden sein.
+            if (!darfFunktion(state)) return@executeOnPooledThread
             state.onboardingAttempts += 1
             if (tryInstantTrial(project)) return@executeOnPooledThread
             // No trial and no key: offer the account path instead of going quiet.
@@ -85,6 +92,8 @@ object CachlyOnboarding {
      * flag and the attempt cap — the user asked for it explicitly this time.
      */
     fun connectNow(project: Project) {
+        // Ausdrueckliche Aktion: fragt, falls noch nicht beantwortet (GROW-035).
+        if (!EinwilligungFrage.fuerAktion(project)) return
         val state = CachlySettings.getInstance().state
         state.onboardingDeclined = false
         ApplicationManager.getApplication().executeOnPooledThread {
@@ -109,6 +118,7 @@ object CachlyOnboarding {
      * and the manual "Connect Brain" action reports the failure visibly.
      */
     fun repairMissingInstance(project: Project) {
+        if (!funktionJetzt()) return
         ApplicationManager.getApplication().executeOnPooledThread {
             if (project.isDisposed) return@executeOnPooledThread
             if (!CachlyApiClient.ensureInstanceId()) return@executeOnPooledThread
@@ -128,6 +138,7 @@ object CachlyOnboarding {
         if (resp.instanceId.isNotBlank()) state.instanceId = resp.instanceId
         state.trialEndsAt = resp.trialEndsAt ?: ""
         state.onboardingAttempts = 0
+        CachlySettings.getInstance().schluesselSichern()
         firstContact(project, trial = true)
         return true
     }
@@ -259,6 +270,7 @@ object CachlyOnboarding {
      * as success would store an empty key.
      */
     fun startDeviceFlow(project: Project) {
+        if (!EinwilligungFrage.fuerAktion(project)) return
         object : Task.Backgroundable(project, "Connecting Cachly Brain", true) {
             override fun run(indicator: ProgressIndicator) {
                 val device = CachlyApiClient.requestDeviceCode()
@@ -295,6 +307,7 @@ object CachlyOnboarding {
                         state.instanceId = poll.instanceId?.takeIf { it.isNotBlank() } ?: ""
                         state.trialEndsAt = ""
                         state.onboardingAttempts = 0
+                        CachlySettings.getInstance().schluesselSichern()
                         firstContact(project, trial = false)
                         return
                     }
@@ -315,6 +328,9 @@ object CachlyOnboarding {
      * move, and the account sign-in runs as before.
      */
     fun linkAccount(project: Project) {
+        // TestBrainUebernahme selbst fragt nicht: die Netzfunktionen dort sind rein
+        // und laufen in den Tests gegen einen lokalen Server. Die Sperre steht hier.
+        if (!EinwilligungFrage.fuerAktion(project)) return
         val testKey = CachlySettings.getInstance().state.apiKey.trim()
         if (!TestBrainUebernahme.istTestSchluessel(testKey)) {
             startDeviceFlow(project)
@@ -365,6 +381,9 @@ object CachlyOnboarding {
                     is TestBrainUebernahme.Ausgang.Erfolg -> {
                         val e = ausgang.ergebnis
                         TestBrainUebernahme.speichereNeuenSchluessel(state, testKey, e)
+                        // Der alte Test-Schluessel ist widerrufen: der neue muss sofort
+                        // im Passwortspeicher liegen, nicht erst beim naechsten Speicherlauf.
+                        CachlySettings.getInstance().schluesselSichern()
                         val bestaetigt = TestBrainUebernahme.brainImKonto(apiBase, e.apiKey, e.instanceId)
                         notify(
                             project,

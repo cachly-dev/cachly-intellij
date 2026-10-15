@@ -1,5 +1,6 @@
 package dev.cachly.brain
 
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.wm.StatusBar
 import com.intellij.openapi.wm.StatusBarWidget
@@ -52,11 +53,33 @@ class CachlyStatusBarWidget(private val project: Project) :
     }
 
     private fun refresh() {
+        // Nichts senden ohne Einwilligung (GROW-035). Das Widget bleibt sichtbar
+        // und sagt, warum es nichts zeigt; ein Klick darauf stellt die Frage bzw.
+        // zeigt, wo man es einschaltet.
+        if (!funktionJetzt()) {
+            zeigeAus()
+            return
+        }
+        // Der 5-Minuten-Takt fragt nur, solange jemand die IDE benutzt: ein
+        // Fenster im Hintergrund ist kein Grund, 12 Mal in der Stunde den
+        // Server zu fragen (GROW-035, Befund 4). Beim naechsten Takt nach der
+        // Rueckkehr in die IDE geht es weiter.
+        if (!ApplicationManager.getApplication().isActive) return
         try {
             render(CachlyApiClient.fetchHealth())
         } catch (_: Exception) {
             SwingUtilities.invokeLater {
                 currentText = "🧠 Brain: error"
+                statusBar?.updateWidget(ID())
+            }
+        }
+    }
+
+    private fun zeigeAus() {
+        val text = "🧠 Cachly: off"
+        SwingUtilities.invokeLater {
+            if (currentText != text) {
+                currentText = text
                 statusBar?.updateWidget(ID())
             }
         }
@@ -137,6 +160,20 @@ class CachlyStatusBarWidget(private val project: Project) :
          * request is the only one. Runs on each widget's own scheduler thread,
          * never on the EDT.
          */
+        /**
+         * Fragt in jeder Statusleiste sofort neu, statt auf den naechsten Takt zu
+         * warten — nach einem Ja zur Einwilligung, im Dialog oder in den Einstellungen.
+         */
+        fun jetztAuffrischen() {
+            for (w in live) {
+                try {
+                    w.scheduler.execute { w.refresh() }
+                } catch (_: RejectedExecutionException) {
+                    // Widget is being disposed — nothing to show it on.
+                }
+            }
+        }
+
         fun showEverywhere(health: BrainHealth) {
             for (w in live) {
                 try {

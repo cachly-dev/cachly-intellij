@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "dev.cachly"
-version = "0.8.8"
+version = "0.8.9"
 
 // ── Die eigene Version als Datei ins Paket legen ──────────────────────────
 //
@@ -152,8 +152,12 @@ intellijPlatform {
               <li><b>Status bar widget</b> &mdash; live lesson count, brain health, and estimated tokens saved.</li>
               <li><b>Lesson viewer</b> &mdash; browse every learned lesson with recall counts and severity.</li>
             </ul>
-            <p><b>Try it without an account.</b> On first start the plugin fetches a free trial brain by itself
+            <p><b>Try it without an account.</b> Once you agree, the plugin fetches a free trial brain by itself
             &mdash; no sign-up, no credit card, no key to paste. Link an account later to keep the data.</p>
+            <p><b>Privacy.</b> The plugin asks before it sends anything. It can send the relative path of the files you open
+            (never their contents) and your lessons to api.cachly.dev; usage statistics are a separate, optional choice.
+            Your API key is kept in the IDE password safe. See the
+            <a href="https://cachly.dev/legal/datenschutz">privacy policy</a>.</p>
             <p><img src="https://cachly.dev/screenshots/intellij/shot1-hero.png" alt="Cachly Brain in a JetBrains IDE: status bar with lesson count and the briefing on project open" width="720"></p>
             <p><img src="https://cachly.dev/screenshots/intellij/shot3-lessons.png" alt="Lesson viewer: every learned lesson with recall count and severity" width="720"></p>
             <p><img src="https://cachly.dev/screenshots/intellij/shot2-doctor.png" alt="Brain Doctor: checks API key, instance and network, and names the fix" width="720"></p>

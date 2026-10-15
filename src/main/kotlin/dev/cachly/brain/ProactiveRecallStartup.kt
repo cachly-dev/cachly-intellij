@@ -32,53 +32,70 @@ class ProactiveRecallStartup : ProjectActivity {
     // bisher auf einem eigenen Thread.
     override suspend fun execute(project: Project) {
         // Install the per-file briefing listener unconditionally — it re-checks
-        // the proactiveBriefing toggle on every event, so flipping the setting
-        // takes effect without a restart.
+        // the proactiveBriefing toggle (and the consent) on every event, so
+        // flipping a setting takes effect without a restart.
         ProactiveFileBriefing.install(project)
-
-        // No key means nothing below can work: fetchHealth would answer
-        // "not healthy" and every branch after it returns in silence. Until
-        // 2026-08-17 that silence WAS the first-run experience — 18 downloads,
-        // zero registrations. Onboarding therefore runs before the briefing and
-        // independently of the proactiveBriefing toggle, which is about popups
-        // for an already-connected Brain, not about getting connected at all.
-        if (CachlyOnboarding.needsKey()) {
-            CachlyOnboarding.maybeOnboard(project)
-            return
-        }
-
-        // A key without an instance id makes every call below return before
-        // the network — see CachlyApiClient.ensureInstanceId. Installs that
-        // got such a trial before 0.8.3 are repaired here, on the next start.
-        if (CachlySettings.getInstance().state.instanceId.isBlank()) {
-            CachlyOnboarding.repairMissingInstance(project)
-            return
-        }
-
-        ApplicationManager.getApplication().executeOnPooledThread {
-            val health = try {
-                CachlyApiClient.fetchHealth()
-            } catch (_: Exception) {
-                return@executeOnPooledThread
-            }
-            // 11.10.2026: Das Plugin meldete bis 0.8.3 nur "Briefing gezeigt" —
-            // 12 neue JetBrains-Konten an einem Tag, 0 Ereignisse, Nutzung
-            // unsichtbar. Gleiche Namen wie MCP-Server und VS Code, damit
-            // Kohorte und Trichter sie mitzaehlen. first_call_success wird
-            // serverseitig nur beim ersten Mal als Aktivierung gemeldet.
-            if (health.status == "healthy") {
-                CachlyApiClient.trackEvent("first_call_success")
-                CachlyApiClient.trackEvent("session_start")
-                // 12.10.2026: 11 JetBrains-Konten, 0 Recalls — AI Assistant
-                // kannte den MCP-Server nie. Fragt nur, wenn er dort fehlt.
-                AiAssistantAnbindung.anbieten(project)
-            }
-            // showProjectBriefing prueft proactiveBriefing selbst.
-            showProjectBriefing(project, health)
-        }
+        verbinden(project)
     }
 
     companion object {
+        /**
+         * Onboarding, Reparatur und Begruessung beim Oeffnen eines Projekts.
+         *
+         * Eigener Einstieg, weil es nach einem Ja in der Frage (EinwilligungDialog,
+         * GROW-035) fuer das aktuelle Projekt noch einmal aufgerufen wird: Beim
+         * Start lief es, bevor die Antwort da war, und hat ohne Einwilligung
+         * nichts getan. Ohne Einwilligung tut es auch jetzt nichts.
+         */
+        fun verbinden(project: Project) {
+            if (!funktionJetzt()) return
+
+            // No key means nothing below can work: fetchHealth would answer
+            // "not healthy" and every branch after it returns in silence. Until
+            // 2026-08-17 that silence WAS the first-run experience — 18 downloads,
+            // zero registrations. Onboarding therefore runs before the briefing and
+            // independently of the proactiveBriefing toggle, which is about popups
+            // for an already-connected Brain, not about getting connected at all.
+            if (CachlyOnboarding.needsKey()) {
+                CachlyOnboarding.maybeOnboard(project)
+                return
+            }
+
+            // A key without an instance id makes every call below return before
+            // the network — see CachlyApiClient.ensureInstanceId. Installs that
+            // got such a trial before 0.8.3 are repaired here, on the next start.
+            if (CachlySettings.getInstance().state.instanceId.isBlank()) {
+                CachlyOnboarding.repairMissingInstance(project)
+                return
+            }
+
+            ApplicationManager.getApplication().executeOnPooledThread {
+                val health = try {
+                    CachlyApiClient.fetchHealth()
+                } catch (_: Exception) {
+                    return@executeOnPooledThread
+                }
+                // Nach einem Ja in der Frage zeigt die Statusleiste sonst bis zum
+                // naechsten Takt "off".
+                CachlyStatusBarWidget.showEverywhere(health)
+                // 11.10.2026: Das Plugin meldete bis 0.8.3 nur "Briefing gezeigt" —
+                // 12 neue JetBrains-Konten an einem Tag, 0 Ereignisse, Nutzung
+                // unsichtbar. Gleiche Namen wie MCP-Server und VS Code, damit
+                // Kohorte und Trichter sie mitzaehlen. first_call_success wird
+                // serverseitig nur beim ersten Mal als Aktivierung gemeldet.
+                // (trackEvent sendet nur mit der Statistik-Einwilligung.)
+                if (health.status == "healthy") {
+                    CachlyApiClient.trackEvent("first_call_success")
+                    CachlyApiClient.trackEvent("session_start")
+                    // 12.10.2026: 11 JetBrains-Konten, 0 Recalls — AI Assistant
+                    // kannte den MCP-Server nie. Fragt nur, wenn er dort fehlt.
+                    AiAssistantAnbindung.anbieten(project)
+                }
+                // showProjectBriefing prueft proactiveBriefing selbst.
+                showProjectBriefing(project, health)
+            }
+        }
+
         /**
          * The "welcome back" briefing with the top lessons. Silent when there is
          * nothing to brief (not healthy, no lessons). Must run off the EDT.

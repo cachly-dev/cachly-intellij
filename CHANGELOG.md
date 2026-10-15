@@ -2,6 +2,23 @@
 
 ---
 
+## [0.8.9] – 2026-10-15 — *"The plugin asks first, and your key leaves the settings file"*
+
+### Security
+- **Nothing is sent before you answer.** On the first project start a dialog asks two questions: **Use the Brain** (file briefings and every call to the Brain; ticked) and **Share usage statistics** (event names; not ticked). Closing the dialog counts as "no" to both. Until you answer, the plugin sends no file path, no lesson and no event, and it does not fetch a trial key. You can change both answers in Settings → Tools → Cachly Brain; the question does not come back. If you update from 0.8.8, the dialog appears at the next project start and the status bar shows "Cachly: off" until you answer.
+- **Your API key moves into the password safe of your IDE.** Until 0.8.8 it sat in plain text in `cachly-brain.xml`; the password field in the settings only hid it on screen. On the first start of 0.8.9 the plugin copies a stored key into the password safe, reads it back and compares it, and only then removes it from the file. If the read-back fails, the old value stays in the file and the next start tries again. You keep your access either way. If the password safe cannot hold a key (locked, not writable, or set to forget passwords on restart), the key stays in the settings file as before, so it is never lost. If the password safe already holds a different key, that one wins and is never overwritten.
+
+### Fixed
+- **Saving the settings no longer resets hidden state.** Until 0.8.8 every save rebuilt the settings from the form and dropped the trial end date, the onboarding counters and the "don't show again" switches.
+
+- **The question cannot be answered by accident.** It has no default button: Enter does nothing, only a click on "Save my choice" or "Send nothing" answers it. In a real IDE the first version was confirmed within seconds by a keystroke meant for another window.
+
+### Changed
+- **The status bar updates right after you say yes**, instead of showing "Cachly: off" until the next 5-minute tick.
+- **The status bar asks the server only while the IDE is the active window.** Until 0.8.8 it asked every 5 minutes, also with the IDE in the background.
+- **Actions ask first.** Run Brain Doctor, Link Account, Connect Brain, Show Brain Health, Show Lessons and Save Lesson show the question if it is still open. If you said no, they tell you where to switch the Brain on instead of failing silently.
+- The README and the Marketplace description name what is sent and link the privacy policy (cachly.dev/legal/datenschutz).
+
 ## [0.8.8] – 2026-10-14 — *"Link Account keeps your lessons"*
 
 ### Fixed

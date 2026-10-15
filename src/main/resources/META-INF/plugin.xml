@@ -6,8 +6,12 @@
         <p><b>ChatGPT and Claude remember your conversations. <a href="https://cachly.dev">cachly</a> remembers your
         codebase.</b> The bug you fixed. Why you chose Postgres. The deploy step that always breaks — and everything
         your teammates learned.</p>
-        <p><b>Free, and you can try it without an account</b> — on first start the plugin fetches a trial brain by
+        <p><b>Free, and you can try it without an account</b> — once you agree, the plugin fetches a trial brain by
         itself. Nothing to sign up for, no key to paste. EU servers, GDPR.</p>
+        <p><b>Privacy:</b> the plugin asks before it sends anything. It can send the relative path of the files you
+        open (never their contents) and your lessons to api.cachly.dev; usage statistics are a separate, optional
+        choice. Your API key is kept in the IDE password safe. See the
+        <a href="https://cachly.dev/legal/datenschutz">privacy policy</a>.</p>
         <p>Shows lesson count and estimated cost saved in the status bar. Detects repeated patterns and offers to save
         them as lessons. Click the status bar widget to see every learned lesson with details.</p>
     ]]></description>
@@ -30,6 +34,10 @@
                 serviceImplementation="dev.cachly.brain.OfflineLessonQueue"/>
         <projectService
                 serviceImplementation="dev.cachly.brain.AmbientLearningService"/>
+        <!-- Die einmalige Frage vor der ersten Datenuebertragung (GROW-035).
+             Laeuft neben den anderen Startaktivitaeten; die senden ohne Antwort nichts. -->
+        <postStartupActivity
+                implementation="dev.cachly.brain.EinwilligungStartup"/>
         <postStartupActivity
                 implementation="dev.cachly.brain.FrameworkDetectionStartup"/>
         <postStartupActivity

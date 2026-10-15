@@ -19,6 +19,8 @@ class SaveLessonAction : AnAction() {
 
     override fun actionPerformed(e: AnActionEvent) {
         val project = e.project ?: return
+        // Ohne Einwilligung bleibt die Lektion nicht im Netz: besser vorher sagen als hinterher "Failed".
+        if (!EinwilligungFrage.fuerAktion(project)) return
         val dialog = SaveLessonDialog(project)
         if (dialog.showAndGet()) {
             val topic = dialog.topicField.text.trim()
