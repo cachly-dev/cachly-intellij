@@ -2,6 +2,12 @@
 
 ---
 
+## [0.9.1] – 2026-10-20 — *"Junie gets the project rule too"*
+
+### Fixed
+- **Junie now knows to call the Brain.** "Set Up AI Files" wrote the MCP entry for Junie (`.junie/mcp/mcp.json`) but no rule, so Junie had the cachly tools and no reason to use them. Now the command also writes `.junie/guidelines.md` with the marked Brain block (recall before each task, learn after each fix). Text of your own in that file stays; our block is appended once and updated in place on later runs. A write error on this file does not stop the other files.
+- **One text everywhere.** The Brain block in the project files is now word for word the block that `npx @cachly-dev/mcp-server init` writes. A test reads the MCP source and fails on any difference.
+
 ## [0.9.0] – 2026-10-19 — *"Connect AI Assistant also writes the project rule"*
 
 ### Fixed

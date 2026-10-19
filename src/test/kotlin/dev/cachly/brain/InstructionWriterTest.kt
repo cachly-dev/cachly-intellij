@@ -258,6 +258,69 @@ class InstructionWriterTest {
         assertFalse(regel.readText().contains(schluessel))
     }
 
+    @Test
+    fun `Junie guidelines are written new, with the smart_recall rule and no key`() {
+        val projekt = tmp.newFolder("junie-neu")
+        val heim = tmp.newFolder("heim-junie-neu")
+
+        val r = CachlyInstructionWriter.writeAll(projekt.path, url, schluessel, instanz, heim)
+
+        val regel = File(projekt, ".junie/guidelines.md")
+        assertTrue("guidelines.md fehlt", regel.exists())
+        val text = regel.readText()
+        assertTrue(text.startsWith(CachlyInstructionWriter.BRAIN_START))
+        assertTrue(text.contains("smart_recall(instance_id=\"$instanz\""))
+        assertFalse(text.contains(schluessel))
+        assertTrue(r.written.contains(".junie/guidelines.md"))
+    }
+
+    @Test
+    fun `foreign Junie guidelines keep their text and get our block appended once`() {
+        val projekt = tmp.newFolder("junie-fremd")
+        val heim = tmp.newFolder("heim-junie-fremd")
+        val regel = File(projekt, ".junie/guidelines.md")
+        regel.parentFile.mkdirs()
+        regel.writeText("Meine eigenen Regeln\n")
+
+        CachlyInstructionWriter.writeAll(projekt.path, url, schluessel, instanz, heim)
+        CachlyInstructionWriter.writeAll(projekt.path, url, schluessel, instanz, heim)
+
+        val text = regel.readText()
+        assertTrue(text.startsWith("Meine eigenen Regeln\n"))
+        assertEquals(2, text.split(CachlyInstructionWriter.BRAIN_START).size)
+        assertTrue(text.contains("smart_recall"))
+    }
+
+    @Test
+    fun `our own old Junie guidelines are updated in place and the text around stays`() {
+        val projekt = tmp.newFolder("junie-alt")
+        val heim = tmp.newFolder("heim-junie-alt")
+        val regel = File(projekt, ".junie/guidelines.md")
+        regel.parentFile.mkdirs()
+        regel.writeText("Vorspann\n${CachlyInstructionWriter.BRAIN_START}\nalter Text\n${CachlyInstructionWriter.BRAIN_END}\nNachspann\n")
+
+        CachlyInstructionWriter.writeAll(projekt.path, url, schluessel, instanz, heim)
+
+        val text = regel.readText()
+        assertFalse(text.contains("alter Text"))
+        assertTrue(text.contains("smart_recall"))
+        assertTrue(text.startsWith("Vorspann\n"))
+        assertTrue(text.endsWith("Nachspann\n"))
+    }
+
+    @Test
+    fun `a Junie guidelines write failure does not stop the other files`() {
+        val projekt = tmp.newFolder("junie-fehler")
+        val heim = tmp.newFolder("heim-junie-fehler")
+        // Ein Ordner an der Stelle der Datei: Schreiben scheitert.
+        File(projekt, ".junie/guidelines.md").mkdirs()
+
+        val r = CachlyInstructionWriter.writeAll(projekt.path, url, schluessel, instanz, heim)
+
+        assertTrue(r.skipped.contains("guidelines.md"))
+        assertTrue(File(projekt, "CLAUDE.md").readText().contains("smart_recall"))
+    }
+
     // ── Die Texte in "Set Up AI Files" ───────────────────────────────────────
 
     @Test

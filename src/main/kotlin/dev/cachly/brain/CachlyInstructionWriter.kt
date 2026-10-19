@@ -9,7 +9,7 @@ import java.io.File
  * replaced; .mcp.json merges the cachly server while preserving others.
  *
  * Files written into the project root (or its git root):
- *  - .mcp.json, .junie/mcp/mcp.json
+ *  - .mcp.json, .junie/mcp/mcp.json, .junie/guidelines.md
  *  - CLAUDE.md, AGENTS.md, .github/copilot-instructions.md,
  *    .windsurfrules, .clinerules  (same marked brain block)
  *  - .cursor/rules/cachly.mdc  (frontmatter + brain block, alwaysApply)
@@ -229,6 +229,10 @@ object CachlyInstructionWriter {
             File(root, ".windsurfrules"),
             File(root, ".clinerules"),
             File(root, ".aiassistant/rules/cachly.md"),
+        ) + listOfNotNull(
+            // Junie liest .junie/guidelines.md (wie die MCP-Einrichtung): nur wo .junie/ da ist.
+            // Fremder Text bleibt, unser Block wird angehaengt oder ersetzt.
+            File(root, ".junie/guidelines.md").takeIf { File(root, ".junie").isDirectory },
         )
         for (file in targets) {
             runCatching {
@@ -535,28 +539,31 @@ object CachlyInstructionWriter {
     fun buildBrainBlock(instanceId: String): String = """
 ## Cachly AI Brain — Always Active
 
-This project uses the Cachly AI Brain for persistent memory across sessions.
-Instance: `$instanceId`. The Brain MCP server should be running (see `.mcp.json`).
+The Brain MCP server runs automatically. Instance: `$instanceId`
 
-### AT THE START of every new conversation (mandatory — before anything else):
+---
+
+### AT THE START of every new conversation (mandatory — first thing, before anything else):
 ```
 session_start(instance_id="$instanceId", workspace_path="<absolute path to this project>", focus="<first topic the user mentioned>")
 ```
-Show the briefing to the user. If the Brain is empty, seed it:
+Show the full briefing output to the user. If the response says the brain is empty or has 0 lessons, immediately seed it:
 ```
 brain_from_git(instance_id="$instanceId", repo_path="<workspace_path>", limit=100)
 ```
+Then tell the user: "Your brain just learned from your git history. You're now pre-briefed."
 
-### BEFORE every task (mandatory):
+### BEFORE every task (mandatory — no exceptions):
 ```
 smart_recall(instance_id="$instanceId", query="<what you are about to do>")
 ```
-If relevant lessons are found, use them before researching.
+If relevant lessons are found, say: "Your brain knows this pattern — [lesson]." Then proceed.
 
 ### BEFORE editing any file (mandatory):
 ```
 remember_context(instance_id="$instanceId", key="wip:<filename>", content="EDITING: <file:line> — <goal>", ttl=86400)
 ```
+When done: update content to `"DONE: <file> — <summary>"`.
 
 ### AFTER every fix, deploy, or discovery (mandatory):
 ```
@@ -565,22 +572,25 @@ learn_from_attempts(instance_id="$instanceId", topic="<category:keyword>", outco
   file_paths=["..."], commands=["..."], tags=["..."])
 ```
 
-### WHEN debugging any error (before grepping/reading files):
-```
-causal_trace(instance_id="$instanceId", problem="<exact error or symptom>")
-```
-If the Brain already has a known fix, use it directly.
-
 ### AT THE END of every conversation (mandatory):
 ```
 session_end(instance_id="$instanceId", summary="<one sentence: what was done>", files_changed=["..."])
 ```
 
+### WHEN debugging any error (mandatory before grepping/reading files):
+```
+causal_trace(instance_id="$instanceId", problem="<exact error or symptom>")
+```
+If a known fix exists in the Brain, use it directly. Skip research if Brain has the answer.
+
+### BEFORE any risky operation (deploy, migration, dependency upgrade):
+```
+brain_predict(instance_id="$instanceId", context="<what you are about to do>")
+```
+Report predicted failure risks to the user before proceeding.
+
 ### Half-finished code rule:
 Never commit code that does not compile. Run `tsc --noEmit` / `go build ./...` before every commit.
-
-### Why this matters
-Each recall saves ~1,200 tokens. The Brain survives IDE restarts, team switches, and model upgrades.
 """.trimStart()
 
     // ── Minimal JSONC-tolerant parser + JSON writer (object/array/string/number/bool/null) ──
