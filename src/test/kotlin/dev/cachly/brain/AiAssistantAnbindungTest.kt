@@ -147,4 +147,47 @@ class AiAssistantAnbindungTest {
         assertNull(AiAssistantAnbindung.eintragen(liste, AiAssistantAnbindung.serverEintrag(url, instanz, null, false)))
         assertEquals("[1, 2]", liste.readText())
     }
+
+    @Test
+    fun `project rule is written fresh and carries the smart_recall instruction`() {
+        val root = tmp.newFolder("neu")
+        assertEquals(CachlyInstructionWriter.RegelErgebnis.NEU, CachlyInstructionWriter.schreibeAiAssistantRegel(root, instanz))
+        val text = File(root, ".aiassistant/rules/cachly.md").readText()
+        assertTrue(text.startsWith(CachlyInstructionWriter.BRAIN_START))
+        assertTrue(text.contains("smart_recall(instance_id=\"$instanz\""))
+        // Zweiter Lauf ohne Aenderung schreibt nichts.
+        assertEquals(CachlyInstructionWriter.RegelErgebnis.GLEICH, CachlyInstructionWriter.schreibeAiAssistantRegel(root, instanz))
+    }
+
+    @Test
+    fun `a foreign rule file is left untouched`() {
+        val root = tmp.newFolder("fremd")
+        val datei = File(root, ".aiassistant/rules/cachly.md")
+        datei.parentFile.mkdirs()
+        datei.writeText("Meine eigene Regel\n")
+        assertEquals(CachlyInstructionWriter.RegelErgebnis.FREMD, CachlyInstructionWriter.schreibeAiAssistantRegel(root, instanz))
+        assertEquals("Meine eigene Regel\n", datei.readText())
+    }
+
+    @Test
+    fun `our own old rule file is updated and text around the markers stays`() {
+        val root = tmp.newFolder("alt")
+        val datei = File(root, ".aiassistant/rules/cachly.md")
+        datei.parentFile.mkdirs()
+        datei.writeText("Vorspann\n${CachlyInstructionWriter.BRAIN_START}\nalter Text\n${CachlyInstructionWriter.BRAIN_END}\nNachspann\n")
+        assertEquals(CachlyInstructionWriter.RegelErgebnis.AKTUALISIERT, CachlyInstructionWriter.schreibeAiAssistantRegel(root, instanz))
+        val text = datei.readText()
+        assertFalse(text.contains("alter Text"))
+        assertTrue(text.contains("smart_recall"))
+        assertTrue(text.startsWith("Vorspann\n"))
+        assertTrue(text.endsWith("Nachspann\n"))
+    }
+
+    @Test
+    fun `a write failure is reported and does not throw`() {
+        val root = tmp.newFolder("fehler")
+        // Eine Datei an der Stelle des Ordners .aiassistant: mkdirs scheitert.
+        File(root, ".aiassistant").writeText("im Weg")
+        assertEquals(CachlyInstructionWriter.RegelErgebnis.FEHLER, CachlyInstructionWriter.schreibeAiAssistantRegel(root, instanz))
+    }
 }

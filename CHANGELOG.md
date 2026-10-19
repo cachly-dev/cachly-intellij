@@ -2,6 +2,12 @@
 
 ---
 
+## [0.9.0] – 2026-10-19 — *"Connect AI Assistant also writes the project rule"*
+
+### Fixed
+- **The AI Assistant chat now knows to call the Brain.** Until 0.8.9 "Connect AI Assistant" added the MCP server but wrote no project rule, so the chat had the cachly tools and no reason to use them (no `smart_recall` call from any JetBrains account up to 19.10.2026). Now the command also writes `.aiassistant/rules/cachly.md` in the project, with the same text as the other integrations (recall before each task, learn after each fix).
+- A file with that name that is not ours (no cachly markers) is never overwritten; the notice tells you. Our own file is updated in place. If writing fails, the MCP connection still goes through and the notice names the problem.
+
 ## [0.8.9] – 2026-10-15 — *"The plugin asks first, and your key leaves the settings file"*
 
 ### Security

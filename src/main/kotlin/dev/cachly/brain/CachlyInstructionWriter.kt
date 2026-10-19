@@ -19,8 +19,8 @@ import java.io.File
  */
 object CachlyInstructionWriter {
 
-    private const val BRAIN_START = "<!-- cachly-brain-start -->"
-    private const val BRAIN_END = "<!-- cachly-brain-end -->"
+    internal const val BRAIN_START = "<!-- cachly-brain-start -->"
+    internal const val BRAIN_END = "<!-- cachly-brain-end -->"
     private const val CI_BRAIN_MARKER = "cachly-brain"
 
     /**
@@ -506,6 +506,31 @@ object CachlyInstructionWriter {
         lines.add("}")
         return lines.joinToString("\n")
     }
+
+    enum class RegelErgebnis { NEU, AKTUALISIERT, GLEICH, FREMD, FEHLER }
+
+    /**
+     * Schreibt `.aiassistant/rules/cachly.md` mit demselben Brain-Block wie alle
+     * anderen Anweisungsdateien (buildBrainBlock). Eine Datei ohne unsere Marken
+     * gehoert jemand anderem und bleibt unberuehrt (FREMD). Eigene Dateien werden
+     * nur bei Abweichung neu geschrieben. Wirft nie.
+     */
+    internal fun schreibeAiAssistantRegel(root: File, instanceId: String): RegelErgebnis = runCatching {
+        val datei = File(root, ".aiassistant/rules/cachly.md")
+        val block = "$BRAIN_START\n${buildBrainBlock(instanceId)}$BRAIN_END"
+        if (datei.exists()) {
+            val alt = datei.readText()
+            if (!(alt.contains(BRAIN_START) && alt.contains(BRAIN_END))) return@runCatching RegelErgebnis.FREMD
+            val neu = alt.substring(0, alt.indexOf(BRAIN_START)) + block +
+                alt.substring(alt.indexOf(BRAIN_END) + BRAIN_END.length)
+            if (neu == alt) return@runCatching RegelErgebnis.GLEICH
+            datei.writeText(neu)
+            return@runCatching RegelErgebnis.AKTUALISIERT
+        }
+        datei.parentFile?.mkdirs()
+        datei.writeText(block + "\n")
+        RegelErgebnis.NEU
+    }.getOrDefault(RegelErgebnis.FEHLER)
 
     fun buildBrainBlock(instanceId: String): String = """
 ## Cachly AI Brain — Always Active

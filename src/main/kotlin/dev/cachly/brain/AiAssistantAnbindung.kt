@@ -218,6 +218,17 @@ object AiAssistantAnbindung {
         }
     }
 
+    /** Eine Zeile (HTML) ueber die Projektregel; leer, wenn nichts zu melden ist. */
+    internal fun regelHinweis(r: CachlyInstructionWriter.RegelErgebnis?): String = when (r) {
+        CachlyInstructionWriter.RegelErgebnis.NEU, CachlyInstructionWriter.RegelErgebnis.AKTUALISIERT ->
+            "<br>Project rule written to .aiassistant/rules/cachly.md: the chat now starts each task with smart_recall."
+        CachlyInstructionWriter.RegelErgebnis.FREMD ->
+            "<br>.aiassistant/rules/cachly.md exists and is not ours, so it was left alone. Add the cachly rule there by hand."
+        CachlyInstructionWriter.RegelErgebnis.FEHLER ->
+            "<br>Could not write .aiassistant/rules/cachly.md. The MCP server is connected, but the chat has no rule to call smart_recall."
+        else -> ""
+    }
+
     /** Vom Hinweis und von Tools → Connect JetBrains AI Assistant. */
     fun verbinden(project: Project) {
         if (!liestGlobaleDatei()) {
@@ -234,8 +245,14 @@ object AiAssistantAnbindung {
             // Sofort ins VFS, damit AI Assistant die Datei jetzt bemerkt und nicht erst beim naechsten Abgleich.
             LocalFileSystem.getInstance().refreshAndFindFileByIoFile(datei)
             CachlyApiClient.trackEvent(if (ergebnis == null) "jetbrains_ai_eintrag_fehler" else "jetbrains_ai_eingetragen")
+            // Projektregel: ohne sie weiss der Chat nicht, dass er zu Beginn smart_recall rufen soll.
+            // Ein Fehler hier bricht die MCP-Anbindung nicht ab, er wird nur gemeldet.
+            val regel = project.basePath?.let {
+                CachlyInstructionWriter.schreibeAiAssistantRegel(CachlyInstructionWriter.findGitRoot(File(it)) ?: File(it), s.instanceId)
+            }
             if (project.isDisposed) return@executeOnPooledThread
             val group = NotificationGroupManager.getInstance().getNotificationGroup(GROUP) ?: return@executeOnPooledThread
+            val regelHinweis = regelHinweis(regel)
             if (ergebnis == null) {
                 group.createNotification(
                     "Cachly Brain — could not write ${datei.path}",
@@ -246,7 +263,7 @@ object AiAssistantAnbindung {
                 }).notify(project)
                 return@executeOnPooledThread
             }
-            val text = hinweisText(datei.path, ergebnis)
+            val text = hinweisText(datei.path, ergebnis) + regelHinweis
             group.createNotification("Cachly Brain — AI Assistant", text, NotificationType.INFORMATION)
                 .addAction(NotificationAction.createSimpleExpiring("Open MCP settings") { oeffnen(project) })
                 .notify(project)
