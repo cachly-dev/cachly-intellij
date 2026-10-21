@@ -7,7 +7,7 @@ import java.io.File
 
 /**
  * `buildBrainBlock` ist eine Handkopie von `buildClaudeMdBlock` im MCP-Paket
- * (sdk/mcp/src/index.ts). Dieser Test liest die MCP-Quelle und verlangt
+ * (sdk/mcp/src/projektdateien.ts). Dieser Test liest die MCP-Quelle und verlangt
  * Wortgleichheit. Fehlt die Quelle, scheitert er mit Meldung: ein stilles
  * Ueberspringen liesse die Kopien unbemerkt auseinanderlaufen.
  */
@@ -19,11 +19,11 @@ class BrainBlockGleichheitTest {
         // Gradle startet Tests im Ordner sdk/intellij; zur Sicherheit nach oben suchen.
         var d: File? = File("").absoluteFile
         while (d != null) {
-            val f = File(d, "sdk/mcp/src/index.ts")
+            val f = File(d, "sdk/mcp/src/projektdateien.ts")
             if (f.isFile) return f
             d = d.parentFile
         }
-        throw AssertionError("MCP-Quelle sdk/mcp/src/index.ts nicht gefunden (Start: ${File("").absolutePath}). Der Gleichheitstest darf nicht still entfallen.")
+        throw AssertionError("MCP-Quelle sdk/mcp/src/projektdateien.ts nicht gefunden (Start: ${File("").absolutePath}). Der Gleichheitstest darf nicht still entfallen.")
     }
 
     private fun mcpBlock(): String {
