@@ -24,6 +24,8 @@ class CachlySettings : PersistentStateComponent<CachlySettings.State> {
         var showCostSaved: Boolean = true,
         var ambientLearning: Boolean = true,
         var proactiveBriefing: Boolean = true,
+        /** Projektwissen in `.aiassistant/rules/cachly-wissen.md` schreiben (siehe Regelwissen). */
+        var regelwissen: Boolean = true,
         /** Silences every proactive popup outright — status bar & panel still update. */
         var quietMode: Boolean = false,
         var firstHitShown: Boolean = false,

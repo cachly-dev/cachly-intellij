@@ -15,6 +15,7 @@ class CachlySettingsConfigurable : Configurable {
     private var showCostSavedBox: JCheckBox? = null
     private var ambientLearningBox: JCheckBox? = null
     private var proactiveBriefingBox: JCheckBox? = null
+    private var regelwissenBox: JCheckBox? = null
     private var quietModeBox: JCheckBox? = null
     private var funktionBox: JCheckBox? = null
     private var statistikBox: JCheckBox? = null
@@ -32,6 +33,10 @@ class CachlySettingsConfigurable : Configurable {
         showCostSavedBox = JCheckBox("Show estimated cost saved in status bar", settings.showCostSaved)
         ambientLearningBox = JCheckBox("Ambient learning (suggest saving repeated patterns)", settings.ambientLearning)
         proactiveBriefingBox = JCheckBox("Proactive briefing (top lessons on project open, warnings on risky file open)", settings.proactiveBriefing)
+        regelwissenBox = JCheckBox(
+            "Project experience for AI Assistant (writes the most relevant lessons to .aiassistant/rules/cachly-wissen.md, excluded from git)",
+            settings.regelwissen,
+        )
         quietModeBox = JCheckBox("Quiet mode (no proactive popups — status bar & Brain panel still update)", settings.quietMode)
         funktionBox = JCheckBox(
             "Use the Brain: file briefings, lessons, health checks (sends file paths and lessons to api.cachly.dev, never file contents)",
@@ -56,6 +61,7 @@ class CachlySettingsConfigurable : Configurable {
             add(showCostSavedBox!!)
             add(ambientLearningBox!!)
             add(proactiveBriefingBox!!)
+            add(regelwissenBox!!)
             add(quietModeBox!!)
             add(Box.createVerticalStrut(12))
             add(JLabel("Data sent to cachly").apply { font = font.deriveFont(java.awt.Font.BOLD) })
@@ -87,6 +93,7 @@ class CachlySettingsConfigurable : Configurable {
                 showCostSavedBox?.isSelected != s.showCostSaved ||
                 ambientLearningBox?.isSelected != s.ambientLearning ||
                 proactiveBriefingBox?.isSelected != s.proactiveBriefing ||
+                regelwissenBox?.isSelected != s.regelwissen ||
                 quietModeBox?.isSelected != s.quietMode ||
                 funktionBox?.isSelected != s.funktionErlaubt ||
                 statistikBox?.isSelected != s.statistikErlaubt
@@ -112,6 +119,7 @@ class CachlySettingsConfigurable : Configurable {
             showCostSaved = showCostSavedBox?.isSelected ?: true,
             ambientLearning = ambientLearningBox?.isSelected ?: true,
             proactiveBriefing = proactiveBriefingBox?.isSelected ?: true,
+            regelwissen = regelwissenBox?.isSelected ?: true,
             quietMode = quietModeBox?.isSelected ?: false,
             // Eine Aenderung an den beiden Haekchen ist eine Antwort.
             einwilligungBeantwortet = existing.einwilligungBeantwortet || geaendert,
@@ -137,6 +145,7 @@ class CachlySettingsConfigurable : Configurable {
         showCostSavedBox?.isSelected = s.showCostSaved
         ambientLearningBox?.isSelected = s.ambientLearning
         proactiveBriefingBox?.isSelected = s.proactiveBriefing
+        regelwissenBox?.isSelected = s.regelwissen
         quietModeBox?.isSelected = s.quietMode
         funktionBox?.isSelected = s.funktionErlaubt
         statistikBox?.isSelected = s.statistikErlaubt

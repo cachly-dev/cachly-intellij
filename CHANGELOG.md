@@ -2,6 +2,15 @@
 
 ---
 
+## [0.9.2] – 2026-10-23 — *"AI Assistant sees your project's experience without asking"*
+
+### Added
+- **Project experience in every AI Assistant chat.** The AI Assistant never calls the Brain on its own, so the lessons stayed unused (5 accounts with the Brain connected, 0 recalls up to 23.10.2026). The plugin now writes the most relevant lessons into `.aiassistant/rules/cachly-wissen.md`, a project rule the AI Assistant loads into every chat. Lessons about the files you have open come first, then the critical warnings of the project; at most 12 lessons and 8,000 characters.
+- The file is refreshed 5 seconds after the project opens and 10 seconds after you switch files, at most every 3 minutes per project. A change in the timestamp alone does not rewrite it. If the Brain has nothing to say, our file is removed.
+- A file at that path without the cachly marker is yours and is never touched. The path is added to `.git/info/exclude`, so the file is not committed by accident; your `.gitignore` stays as it is.
+- The lessons are framed as stored notes, not instructions, and the server removes role tags and invisible characters before they reach the file.
+- Opt-out: Settings → Tools → Cachly Brain → "Project experience for AI Assistant". Like every call to the Brain, it only runs after you said yes to "Use the Brain".
+
 ## [0.9.1] – 2026-10-20 — *"Junie gets the project rule too"*
 
 ### Fixed

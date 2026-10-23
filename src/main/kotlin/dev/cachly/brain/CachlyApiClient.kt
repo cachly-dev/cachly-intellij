@@ -125,6 +125,12 @@ data class BriefingResponse(
     @SerializedName("matched_lessons") val matchedLessons: Int = 0,
 )
 
+/** Antwort von POST /instances/:id/regelwissen. Leeres [markdown] = nichts zu sagen. */
+data class RegelwissenAntwort(
+    val markdown: String = "",
+    val lektionen: Int = 0,
+)
+
 data class BrainHealth(
     val lessons: Int = 0,
     val contexts: Int = 0,
@@ -383,6 +389,28 @@ object CachlyApiClient {
         ) ?: return null
         return try {
             gson.fromJson(json, BriefingResponse::class.java)
+        } catch (_: Exception) { null }
+    }
+
+    /**
+     * Der Regelblock fuer `.aiassistant/rules/cachly-wissen.md` (siehe [Regelwissen]).
+     * [dateien]: offene Dateien relativ zum Projekt — ihre Lektionen ruecken nach vorn.
+     * Null, wenn nicht verbunden, ohne Einwilligung oder bei Netzfehler.
+     */
+    fun fetchRegelwissen(dateien: List<String>): RegelwissenAntwort? {
+        val settings = CachlySettings.getInstance().state
+        if (settings.apiKey.isBlank() || settings.instanceId.isBlank()) return null
+        // Die Pfade verlassen die IDE nur mit Einwilligung (GROW-035).
+        if (!darfFunktion(settings)) return null
+        val baseUrl = settings.apiUrl.trimEnd('/')
+        val body = gson.toJson(mapOf("dateien" to dateien))
+        val json = httpPost(
+            "$baseUrl/api/v1/instances/${settings.instanceId}/regelwissen",
+            settings.apiKey,
+            body,
+        ) ?: return null
+        return try {
+            gson.fromJson(json, RegelwissenAntwort::class.java)
         } catch (_: Exception) { null }
     }
 

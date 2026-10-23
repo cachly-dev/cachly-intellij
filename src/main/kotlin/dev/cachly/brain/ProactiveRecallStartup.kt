@@ -35,6 +35,8 @@ class ProactiveRecallStartup : ProjectActivity {
         // the proactiveBriefing toggle (and the consent) on every event, so
         // flipping a setting takes effect without a restart.
         ProactiveFileBriefing.install(project)
+        // Prueft Schalter und Einwilligung bei jedem Anstoss selbst.
+        RegelwissenDienst.install(project)
         verbinden(project)
     }
 
@@ -68,6 +70,9 @@ class ProactiveRecallStartup : ProjectActivity {
                 CachlyOnboarding.repairMissingInstance(project)
                 return
             }
+
+            // Projektwissen fuer den AI Assistant (prueft seinen Schalter selbst).
+            RegelwissenDienst.anstossen(project)
 
             ApplicationManager.getApplication().executeOnPooledThread {
                 val health = try {
