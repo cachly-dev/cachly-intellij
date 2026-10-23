@@ -2,6 +2,14 @@
 
 ---
 
+## [0.9.3] – 2026-10-23 — *"A new Brain starts with your project's history"*
+
+### Added
+- **A Brain created by the plugin no longer starts empty.** Until now only the MCP server read your project's git history into a new Brain, and only when it created the Brain itself. A Brain created here stayed empty, and so did `.aiassistant/rules/cachly-wissen.md` from 0.9.2. Now the plugin reads the last 30 commits of the project into an empty Brain, in the background, after you connect and when a project opens.
+- It runs `npx @cachly-dev/mcp-server startwissen-import`, so the rules are the same as in the MCP server and come from the same code: only into a Brain without lessons, only from your own repository, at most 30 commits. Afterwards the rule file is refreshed at once.
+- Your key is passed in the environment, never on the command line. Without Node/npx nothing happens. The process ends after 4 minutes at the latest. At most 3 attempts per Brain; a Brain with lessons is never asked again.
+- Like every call to the Brain, it only runs after you said yes to "Use the Brain". Off switch: environment variable `CACHLY_STARTWISSEN=0`.
+
 ## [0.9.2] – 2026-10-23 — *"AI Assistant sees your project's experience without asking"*
 
 ### Added

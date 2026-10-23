@@ -52,6 +52,8 @@ class CachlySettings : PersistentStateComponent<CachlySettings.State> {
          * "relPath::topic" -> epoch millis. Capped at 300 (oldest evicted).
          */
         var briefingSuppressed: MutableMap<String, Long> = mutableMapOf(),
+        /** Start-Import der Git-Geschichte: Versuche je Instanz (siehe Startwissen, hoechstens 3). */
+        var startwissenVersuche: MutableMap<String, Int> = mutableMapOf(),
         // Last health snapshot that actually carried data, persisted across
         // restarts. A cold-start fetch (network still down, instance waking,
         // transient zeroed stats) otherwise repaints real counters as 0/limit.

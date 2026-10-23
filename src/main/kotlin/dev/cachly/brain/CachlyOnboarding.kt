@@ -186,6 +186,8 @@ object CachlyOnboarding {
                 announceConnected(project, health!!, trial)
                 AiAssistantAnbindung.anbieten(project)
                 ProactiveRecallStartup.showProjectBriefing(project, health)
+                // Ein frischer Test ist leer: Git-Geschichte einlesen, danach die Regeldatei fuellen.
+                StartwissenDienst.anstossen(project)
             } else {
                 announceNotReached(project, if (hasInstance) "the Brain did not answer" else "no Brain instance was assigned")
             }

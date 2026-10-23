@@ -46,6 +46,12 @@ object RegelwissenDienst {
     /** Beim Oeffnen des Projekts und nach einem Ja in der Einwilligungsfrage. */
     fun anstossen(project: Project) = planen(project, START_MS)
 
+    /** Nach dem Start-Import: ohne die 3-Minuten-Sperre, die neuen Lektionen sollen gleich hinein. */
+    fun sofort(project: Project) {
+        project.basePath?.let { zuletzt.remove(it) }
+        planen(project, 1_000L)
+    }
+
     private fun planen(project: Project, verzoegerung: Long) {
         // Ohne Einwilligung geht kein Dateipfad ans Netz (GROW-035).
         if (!CachlySettings.getInstance().state.regelwissen || !funktionJetzt()) return

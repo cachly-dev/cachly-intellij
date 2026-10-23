@@ -73,6 +73,8 @@ class ProactiveRecallStartup : ProjectActivity {
 
             // Projektwissen fuer den AI Assistant (prueft seinen Schalter selbst).
             RegelwissenDienst.anstossen(project)
+            // Ein leeres Brain liest die Git-Geschichte des Projekts ein (prueft selbst, ob es leer ist).
+            StartwissenDienst.anstossen(project)
 
             ApplicationManager.getApplication().executeOnPooledThread {
                 val health = try {
