@@ -46,6 +46,11 @@ object CachlyOnboarding {
      */
     private const val GUIDE = "https://cachly.dev/docs/jetbrains"
 
+    /** Knopf und Satz im Hinweis nach dem Verbinden (announceConnected). */
+    internal const val SET_UP_AI_FILES = "Set up AI files"
+    internal const val AI_FILES_HINT =
+        "One click writes the files that tell Junie and Claude Code to check your Brain first."
+
     /**
      * Number of self-serve attempts before the plugin stops trying by itself and
      * only offers the manual path. Three is enough to survive an API restart
@@ -199,13 +204,20 @@ object CachlyOnboarding {
     private fun announceConnected(project: Project, health: BrainHealth, trial: Boolean) {
         val group = NotificationGroupManager.getInstance().getNotificationGroup(GROUP) ?: return
         val lessons = if (health.lessons == 1) "1 lesson" else "${health.lessons} lessons"
+        // Der erste Knopf schreibt die KI-Dateien in dieses Projekt. Vorher gab es
+        // dafuer nur den Menuepunkt Tools -> Set Up AI Files, den hier niemand
+        // nannte: Am 19.10.2026 kamen 35 von 49 neuen Konten ueber JetBrains,
+        // keines rief je smart_recall.
+        val einrichten = NotificationAction.createSimpleExpiring(SET_UP_AI_FILES) {
+            SetupBrainAction.einrichten(project)
+        }
         val notification = if (trial) {
             group.createNotification(
                 "Cachly Brain — trial brain connected",
-                "Your Brain answers: $lessons so far. Connect your AI assistant so it can read and add lessons. " +
+                "Your Brain answers: $lessons so far. $AI_FILES_HINT " +
                     "Link an account to keep the data beyond the trial.",
                 NotificationType.INFORMATION,
-            ).addAction(
+            ).addAction(einrichten).addAction(
                 NotificationAction.createSimple("How to connect your AI") { BrowserUtil.browse(GUIDE) },
             ).addAction(
                 NotificationAction.createSimple("Link account") { linkAccount(project) },
@@ -213,9 +225,9 @@ object CachlyOnboarding {
         } else {
             group.createNotification(
                 "Cachly Brain — connected",
-                "Your Brain answers: $lessons. Your AI assistant uses it once it is connected over MCP.",
+                "Your Brain answers: $lessons. $AI_FILES_HINT",
                 NotificationType.INFORMATION,
-            ).addAction(
+            ).addAction(einrichten).addAction(
                 NotificationAction.createSimple("How to connect your AI") { BrowserUtil.browse(GUIDE) },
             )
         }

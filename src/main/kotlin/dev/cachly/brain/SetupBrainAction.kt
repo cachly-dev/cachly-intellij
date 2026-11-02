@@ -5,6 +5,7 @@ import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.Task
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.vfs.LocalFileSystem
 import dev.cachly.brain.CachlyInstructionWriter.HeimAblage
@@ -23,88 +24,98 @@ import java.io.File
 class SetupBrainAction : AnAction() {
 
     override fun actionPerformed(e: AnActionEvent) {
-        val project = e.project ?: return
-        val basePath = project.basePath
-        if (basePath == null) {
-            Messages.showErrorDialog(project, "No project directory found.", "Cachly Brain")
-            return
-        }
-        val settings = CachlySettings.getInstance().state
-        if (settings.apiKey.isBlank()) {
-            Messages.showWarningDialog(
-                project,
-                "Set your API key and instance ID first:\nSettings → Tools → Cachly Brain.",
-                "Cachly Brain — Not Configured",
-            )
-            return
-        }
+        einrichten(e.project ?: return)
+    }
 
-        // Die Dateien entstehen lokal. Nur das Nachholen der Instanz-ID geht ans Netz,
-        // und das nur mit Einwilligung (GROW-035).
-        if (settings.instanceId.isBlank() && !EinwilligungFrage.fuerAktion(project)) return
+    companion object {
+        /**
+         * Der ganze Ablauf, auch aus dem Hinweis nach dem Verbinden
+         * (CachlyOnboarding.announceConnected): Ohne diese Dateien hat keine KI
+         * einen Grund, smart_recall zu rufen.
+         */
+        fun einrichten(project: Project) {
+            val basePath = project.basePath
+            if (basePath == null) {
+                Messages.showErrorDialog(project, "No project directory found.", "Cachly Brain")
+                return
+            }
+            val settings = CachlySettings.getInstance().state
+            if (settings.apiKey.isBlank()) {
+                Messages.showWarningDialog(
+                    project,
+                    "Set your API key and instance ID first:\nSettings → Tools → Cachly Brain.",
+                    "Cachly Brain — Not Configured",
+                )
+                return
+            }
 
-        object : Task.Backgroundable(project, "Setting up Cachly Brain files", false) {
-            override fun run(indicator: ProgressIndicator) {
-                // A key without an instance id: fetch it instead of refusing —
-                // see CachlyApiClient.ensureInstanceId.
-                if (!CachlyApiClient.ensureInstanceId()) {
-                    javax.swing.SwingUtilities.invokeLater {
-                        Messages.showWarningDialog(
-                            project,
-                            "Your key is saved, but no Brain instance could be assigned to it.\n" +
-                                "Run Tools → Run Brain Doctor, or set the instance ID in Settings → Tools → Cachly Brain.",
-                            "Cachly Brain — No Instance",
-                        )
+            // Die Dateien entstehen lokal. Nur das Nachholen der Instanz-ID geht ans Netz,
+            // und das nur mit Einwilligung (GROW-035).
+            if (settings.instanceId.isBlank() && !EinwilligungFrage.fuerAktion(project)) return
+
+            object : Task.Backgroundable(project, "Setting up Cachly Brain files", false) {
+                override fun run(indicator: ProgressIndicator) {
+                    // A key without an instance id: fetch it instead of refusing —
+                    // see CachlyApiClient.ensureInstanceId.
+                    if (!CachlyApiClient.ensureInstanceId()) {
+                        javax.swing.SwingUtilities.invokeLater {
+                            Messages.showWarningDialog(
+                                project,
+                                "Your key is saved, but no Brain instance could be assigned to it.\n" +
+                                    "Run Tools → Run Brain Doctor, or set the instance ID in Settings → Tools → Cachly Brain.",
+                                "Cachly Brain — No Instance",
+                            )
+                        }
+                        return
                     }
-                    return
-                }
-                val apiUrl = settings.apiUrl.trimEnd('/')
-                var result = CachlyInstructionWriter.writeAll(basePath, apiUrl, settings.apiKey, settings.instanceId)
+                    val apiUrl = settings.apiUrl.trimEnd('/')
+                    var result = CachlyInstructionWriter.writeAll(basePath, apiUrl, settings.apiKey, settings.instanceId)
 
-                // Ein anderer Schluessel liegt im Heimordner: der Mensch entscheidet, welcher gelten soll.
-                // Wie auch immer er sich entscheidet — in die Projektdateien kommt kein Schluessel.
-                var ersetzt = false
-                if (result.heim == HeimAblage.KONFLIKT) {
-                    var wahl = Messages.NO
-                    ApplicationManager.getApplication().invokeAndWait {
-                        wahl = Messages.showYesNoDialog(
-                            project,
-                            SchluesselWahl.FRAGE,
-                            SchluesselWahl.TITEL,
-                            SchluesselWahl.ERSETZEN,
-                            SchluesselWahl.BEHALTEN,
-                            Messages.getWarningIcon(),
-                        )
-                    }
-                    if (wahl == Messages.YES) {
-                        val neu = CachlyInstructionWriter.legeSchluesselImHeimAb(
-                            settings.apiKey, settings.instanceId, File(System.getProperty("user.home")), ersetzen = true,
-                        )
-                        if (neu == HeimAblage.GESCHRIEBEN || neu == HeimAblage.UNVERAENDERT) {
-                            ersetzt = true
-                            // Zweiter Lauf: jetzt liegt der Schluessel im Heimordner, Altbestand im Projekt darf raus.
-                            result = CachlyInstructionWriter.writeAll(basePath, apiUrl, settings.apiKey, settings.instanceId)
+                    // Ein anderer Schluessel liegt im Heimordner: der Mensch entscheidet, welcher gelten soll.
+                    // Wie auch immer er sich entscheidet — in die Projektdateien kommt kein Schluessel.
+                    var ersetzt = false
+                    if (result.heim == HeimAblage.KONFLIKT) {
+                        var wahl = Messages.NO
+                        ApplicationManager.getApplication().invokeAndWait {
+                            wahl = Messages.showYesNoDialog(
+                                project,
+                                SchluesselWahl.FRAGE,
+                                SchluesselWahl.TITEL,
+                                SchluesselWahl.ERSETZEN,
+                                SchluesselWahl.BEHALTEN,
+                                Messages.getWarningIcon(),
+                            )
+                        }
+                        if (wahl == Messages.YES) {
+                            val neu = CachlyInstructionWriter.legeSchluesselImHeimAb(
+                                settings.apiKey, settings.instanceId, File(System.getProperty("user.home")), ersetzen = true,
+                            )
+                            if (neu == HeimAblage.GESCHRIEBEN || neu == HeimAblage.UNVERAENDERT) {
+                                ersetzt = true
+                                // Zweiter Lauf: jetzt liegt der Schluessel im Heimordner, Altbestand im Projekt darf raus.
+                                result = CachlyInstructionWriter.writeAll(basePath, apiUrl, settings.apiKey, settings.instanceId)
+                            }
                         }
                     }
+                    // Refresh VFS so the new files show up in the Project view immediately.
+                    LocalFileSystem.getInstance().refresh(true)
+                    val schluesselText = SchluesselWahl.bericht(result, ersetzt)
+                    javax.swing.SwingUtilities.invokeLater {
+                        val written = if (result.written.isEmpty()) "(none)" else result.written.joinToString("\n• ", "• ")
+                        val skipped = if (result.skipped.isEmpty()) "" else
+                            "\n\nAlready present / skipped:\n• " + result.skipped.joinToString("\n• ")
+                        Messages.showInfoMessage(
+                            project,
+                            "Your AI tools now have persistent memory.\n\nWritten:\n$written$skipped\n\n" +
+                                schluesselText +
+                                "Restart your AI tool (Claude Code / Junie / Copilot / Cursor) to activate.\n" +
+                                "JetBrains AI Assistant does not read these files — use Tools → Connect JetBrains AI Assistant.",
+                            "Cachly Brain — Setup Complete",
+                        )
+                    }
                 }
-                // Refresh VFS so the new files show up in the Project view immediately.
-                LocalFileSystem.getInstance().refresh(true)
-                val schluesselText = SchluesselWahl.bericht(result, ersetzt)
-                javax.swing.SwingUtilities.invokeLater {
-                    val written = if (result.written.isEmpty()) "(none)" else result.written.joinToString("\n• ", "• ")
-                    val skipped = if (result.skipped.isEmpty()) "" else
-                        "\n\nAlready present / skipped:\n• " + result.skipped.joinToString("\n• ")
-                    Messages.showInfoMessage(
-                        project,
-                        "Your AI tools now have persistent memory.\n\nWritten:\n$written$skipped\n\n" +
-                            schluesselText +
-                            "Restart your AI tool (Claude Code / Junie / Copilot / Cursor) to activate.\n" +
-                            "JetBrains AI Assistant does not read these files — use Tools → Connect JetBrains AI Assistant.",
-                        "Cachly Brain — Setup Complete",
-                    )
-                }
-            }
-        }.queue()
+            }.queue()
+        }
     }
 }
 

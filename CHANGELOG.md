@@ -2,6 +2,12 @@
 
 ---
 
+## [0.9.5] – 2026-11-02 — *"Set up AI files right after connecting"*
+
+### Changed
+- **The message after connecting now has a "Set up AI files" button.** One click writes the files that tell Junie and Claude Code to check your Brain first (`CLAUDE.md`, `AGENTS.md`, `.junie/guidelines.md`, `.junie/mcp/mcp.json` and more). Before, this step was only in the Tools menu, and the message did not mention it. Without these files, your AI has no reason to ask your Brain.
+- "How to connect your AI" stays as the second button. JetBrains AI Assistant still connects through its own offer or Tools → Connect JetBrains AI Assistant.
+
 ## [0.9.4] – 2026-11-02 — *"Counted facts only: no money, no time-saved guess"*
 
 ### Removed
