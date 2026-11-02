@@ -97,6 +97,8 @@ class ProactiveRecallStartup : ProjectActivity {
                     // 12.10.2026: 11 JetBrains-Konten, 0 Recalls — AI Assistant
                     // kannte den MCP-Server nie. Fragt nur, wenn er dort fehlt.
                     AiAssistantAnbindung.anbieten(project)
+                    // 02.11.2026: Ohne Regeldatei hat Junie/Claude Code keinen Grund zu fragen.
+                    KiDateienAngebot.anbieten(project)
                 }
                 // showProjectBriefing prueft proactiveBriefing selbst.
                 showProjectBriefing(project, health)

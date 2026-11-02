@@ -2,6 +2,12 @@
 
 ---
 
+## [0.9.6] – 2026-11-02 — *"Set up AI files in every project that lacks them"*
+
+### Changed
+- **When you open a project whose AI files are missing, the plugin offers "Set up AI files" once.** Version 0.9.5 shows the button only right after connecting. If you connected earlier, you never saw it. Now the plugin checks each project: if no rule file (`CLAUDE.md`, `AGENTS.md`, `.junie/guidelines.md` and the others) holds the cachly block, it offers to write them.
+- At most once per project and IDE session. "Not for this project" turns it off for that project; quiet mode turns it off everywhere. A project set up with the npx command counts as set up.
+
 ## [0.9.5] – 2026-11-02 — *"Set up AI files right after connecting"*
 
 ### Changed
