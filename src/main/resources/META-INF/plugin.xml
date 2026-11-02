@@ -12,7 +12,7 @@
         open (never their contents) and your lessons to api.cachly.dev; usage statistics are a separate, optional
         choice. Your API key is kept in the IDE password safe. See the
         <a href="https://cachly.dev/legal/datenschutz">privacy policy</a>.</p>
-        <p>Shows lesson count and estimated cost saved in the status bar. Detects repeated patterns and offers to save
+        <p>Shows lesson and recall counts in the status bar. Detects repeated patterns and offers to save
         them as lessons. Click the status bar widget to see every learned lesson with details.</p>
     ]]></description>
 

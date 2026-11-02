@@ -12,7 +12,6 @@ class CachlySettingsConfigurable : Configurable {
     private var instanceIdField: JTextField? = null
     private var apiUrlField: JTextField? = null
     private var intervalField: JSpinner? = null
-    private var showCostSavedBox: JCheckBox? = null
     private var ambientLearningBox: JCheckBox? = null
     private var proactiveBriefingBox: JCheckBox? = null
     private var regelwissenBox: JCheckBox? = null
@@ -30,7 +29,6 @@ class CachlySettingsConfigurable : Configurable {
         instanceIdField = JTextField(settings.instanceId, 40)
         apiUrlField = JTextField(settings.apiUrl, 40)
         intervalField = JSpinner(SpinnerNumberModel(settings.refreshIntervalSec, 30, 3600, 30))
-        showCostSavedBox = JCheckBox("Show estimated cost saved in status bar", settings.showCostSaved)
         ambientLearningBox = JCheckBox("Ambient learning (suggest saving repeated patterns)", settings.ambientLearning)
         proactiveBriefingBox = JCheckBox("Proactive briefing (top lessons on project open, warnings on risky file open)", settings.proactiveBriefing)
         regelwissenBox = JCheckBox(
@@ -58,7 +56,6 @@ class CachlySettingsConfigurable : Configurable {
             add(labeledRow("Instance ID:", instanceIdField!!))
             add(labeledRow("API URL:", apiUrlField!!))
             add(labeledRow("Refresh Interval (sec):", intervalField!!))
-            add(showCostSavedBox!!)
             add(ambientLearningBox!!)
             add(proactiveBriefingBox!!)
             add(regelwissenBox!!)
@@ -90,7 +87,6 @@ class CachlySettingsConfigurable : Configurable {
                 instanceIdField?.text != s.instanceId ||
                 apiUrlField?.text != s.apiUrl ||
                 (intervalField?.value as? Int) != s.refreshIntervalSec ||
-                showCostSavedBox?.isSelected != s.showCostSaved ||
                 ambientLearningBox?.isSelected != s.ambientLearning ||
                 proactiveBriefingBox?.isSelected != s.proactiveBriefing ||
                 regelwissenBox?.isSelected != s.regelwissen ||
@@ -116,7 +112,6 @@ class CachlySettingsConfigurable : Configurable {
             instanceId = instanceIdField?.text ?: "",
             apiUrl = apiUrlField?.text ?: "https://api.cachly.dev",
             refreshIntervalSec = (intervalField?.value as? Int) ?: 300,
-            showCostSaved = showCostSavedBox?.isSelected ?: true,
             ambientLearning = ambientLearningBox?.isSelected ?: true,
             proactiveBriefing = proactiveBriefingBox?.isSelected ?: true,
             regelwissen = regelwissenBox?.isSelected ?: true,
@@ -142,7 +137,6 @@ class CachlySettingsConfigurable : Configurable {
         instanceIdField?.text = s.instanceId
         apiUrlField?.text = s.apiUrl
         intervalField?.value = s.refreshIntervalSec
-        showCostSavedBox?.isSelected = s.showCostSaved
         ambientLearningBox?.isSelected = s.ambientLearning
         proactiveBriefingBox?.isSelected = s.proactiveBriefing
         regelwissenBox?.isSelected = s.regelwissen

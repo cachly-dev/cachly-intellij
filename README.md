@@ -48,7 +48,7 @@
 
 ## What This Plugin Does
 
-You've set up the cachly MCP server. Your AI assistant is now learning and remembering. But how do you know it's working? How many lessons has it stored? How much money has it saved you?
+You've set up the cachly MCP server. Your AI assistant is now learning and remembering. But how do you know it's working? How many lessons has it stored? Which lessons has it reused?
 
 **This plugin makes your AI's brain visible.** Status bar widget, health dialog, lessons table — inside any JetBrains IDE.
 
@@ -57,7 +57,7 @@ You've set up the cachly MCP server. Your AI assistant is now learning and remem
 ## Features
 
 - **Status bar widget** — Live lesson count and brain health (`🧠 Brain: 42 lessons`)
-- **Brain Health Dialog** — Storage usage, tier, recalls, estimated tokens & cost saved
+- **Brain Health Dialog** — Storage usage, tier, recalls, estimated tokens saved (an estimate, no money)
 - **Lessons View** — All lessons with topic, outcome, recall count, and what worked
 - **Auto-refresh** — Configurable interval (default 5 minutes)
 - **All JetBrains IDEs** — IntelliJ IDEA, WebStorm, PyCharm, GoLand, Rider, and more

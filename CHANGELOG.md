@@ -2,6 +2,16 @@
 
 ---
 
+## [0.9.4] – 2026-11-02 — *"Counted facts only: no money, no time-saved guess"*
+
+### Removed
+- **The plugin no longer shows any money amount or "developer time saved" estimate.** A user saw "Cost saved: €1,000,000". That number came from a guess (30–240 minutes per reused lesson, times an hourly rate) and did not hold up.
+- Removed: the "~$X est. saved" suffix in the status bar, the rows "Developer time saved", "Cost saved" and "Est. Cost Saved" in the Brain Health dialog, and the setting "Show estimated cost saved in status bar".
+
+### Changed
+- The status bar now shows counted facts: `Brain: 12 lessons · 40 recalls`.
+- Kept: lessons, recalls, reuse by teammates in %, time to first payoff, and the token estimate, labelled as an estimate (about 1,200 tokens per reused lesson), without any currency.
+
 ## [0.9.3] – 2026-10-23 — *"A new Brain starts with your project's history"*
 
 ### Added

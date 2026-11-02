@@ -21,6 +21,7 @@ class CachlySettings : PersistentStateComponent<CachlySettings.State> {
         var instanceId: String = "",
         var apiUrl: String = "https://api.cachly.dev",
         var refreshIntervalSec: Int = 300,
+        /** Unused since 0.9.4 (the cost display was removed). Kept so saved settings still load. */
         var showCostSaved: Boolean = true,
         var ambientLearning: Boolean = true,
         var proactiveBriefing: Boolean = true,

@@ -37,11 +37,24 @@ class BrainHealthHtmlTest {
 
     @Test
     fun `value estimate block renders as html`() {
-        val ins = InsightsResponse(minutesSaved = 120.0, dollarsSaved = 150.0, ttfrP50Sec = 3600.0, reusePct = 12.5)
+        val ins = InsightsResponse(ttfrP50Sec = 3600.0, reusePct = 12.5)
         assertWirdAlsHtmlGerendert(brainSummaryHtml(gesund.copy(insights = ins)))
         assertWirdAlsHtmlGerendert(
             brainSummaryHtml(gesund.copy(insights = ins, teamAuthors = listOf("anna", "ben", "cem"))),
         )
+    }
+
+    @Test
+    fun `no money and no time-saved estimate is shown`() {
+        val ins = InsightsResponse(recallsTotal = 40, ttfrP50Sec = 3600.0, reusePct = 12.5)
+        val text = brainSummaryHtml(
+            gesund.copy(totalRecalls = 40, estimatedTokensSaved = 48000, insights = ins, teamAuthors = listOf("anna", "ben")),
+        )
+        assertFalse(text, Regex("€|\\$\\s?\\d|EUR|USD").containsMatchIn(text))
+        assertFalse(text.contains("cost saved", ignoreCase = true))
+        assertFalse(text.contains("time saved", ignoreCase = true))
+        assertTrue(text.contains("First payoff"))
+        assertTrue(Regex("12[.,]5%").containsMatchIn(text)) // Komma oder Punkt je nach Systemsprache
     }
 
     @Test

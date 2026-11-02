@@ -97,14 +97,10 @@ data class InstanceResponse(
 )
 
 data class InsightsResponse(
-    @SerializedName("minutes_saved") val minutesSaved: Double = 0.0,
-    @SerializedName("dollars_saved") val dollarsSaved: Double = 0.0,
     @SerializedName("recalls_total") val recallsTotal: Long = 0,
     @SerializedName("reuse_pct") val reusePct: Double = 0.0,
     @SerializedName("ttfr_p50_sec") val ttfrP50Sec: Double = -1.0,
     @SerializedName("ttfr_p90_sec") val ttfrP90Sec: Double = -1.0,
-    val currency: String = "EUR",
-    @SerializedName("hourly_rate") val hourlyRate: Double = 75.0,
 )
 
 data class BriefingWarning(
@@ -161,9 +157,6 @@ data class BrainHealth(
     companion object {
         /** Average tokens saved per recall — reuses known solution instead of re-researching. */
         const val TOKENS_PER_RECALL = 1200
-
-        /** ~$3 per 1M tokens (blended LLM input rate) — used for the cost estimate. */
-        const val COST_PER_TOKEN = 0.000003
     }
 }
 

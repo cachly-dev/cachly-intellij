@@ -13,7 +13,6 @@ internal fun brainSummaryHtml(health: BrainHealth): String {
     val recallScope = if (monthly) "this month" else "all-time"
     val overLimit = monthly && health.totalRecalls >= health.recallLimit
     val tokensSaved = formatTokens(health.estimatedTokensSaved)
-    val costSaved = "%.2f".format(health.estimatedTokensSaved * BrainHealth.COST_PER_TOKEN)
     val usedMB = "%.2f".format(health.memoryUsedBytes / (1024.0 * 1024.0))
     val limitMB = health.memoryLimitBytes / (1024 * 1024)
     val pct = "%.1f".format(health.memoryUsedPct)
@@ -28,21 +27,14 @@ internal fun brainSummaryHtml(health: BrainHealth): String {
         "<tr><td><b>Recalls ($recallScope):</b></td><td><b>${health.totalRecalls}</b> · unlimited plan</td></tr>"
     }
 
-    // ── Value estimate — labeled heuristics, never presented as fact ──
+    // ── Measured facts only: no money, no time-saved estimate ──
     val insightsHtml = health.insights?.let { ins ->
         val rows = StringBuilder()
-        if (ins.minutesSaved > 0) {
-            rows.append("<tr><td><b>Developer time saved:</b></td><td><b>${"%.0f".format(ins.minutesSaved)} min</b> <i>(heuristic: 30–240 min per reused lesson)</i></td></tr>")
-        }
-        if (ins.dollarsSaved > 0) {
-            rows.append("<tr><td><b>Cost saved:</b></td><td><b>${formatMoney(ins.dollarsSaved, ins.currency)}</b> <i>(at ${formatMoney(ins.hourlyRate, ins.currency)}/h)</i></td></tr>")
-        }
         if (ins.ttfrP50Sec > 0) {
             rows.append("<tr><td><b>Time to first payoff:</b></td><td>${formatDuration(ins.ttfrP50Sec)} <i>(Brain creation → first reused lesson)</i></td></tr>")
         }
         if (rows.isEmpty()) "" else """
-            <h2>💰 Value estimate</h2>
-            <p style='color:gray;'>Estimates derived from recall activity — not measured billing data.</p>
+            <h2>⏱ First payoff</h2>
             <table cellpadding="4">$rows</table>
         """
     } ?: ""
@@ -78,7 +70,6 @@ internal fun brainSummaryHtml(health: BrainHealth): String {
               <tr><td><b>Context Entries:</b></td><td>${health.contexts}</td></tr>
               $recallRow
               <tr><td><b>Est. Tokens Saved ($recallScope):</b></td><td>$tokensSaved <i>(~${BrainHealth.TOKENS_PER_RECALL} per reused lesson)</i></td></tr>
-              <tr><td><b>Est. Cost Saved:</b></td><td>~$$costSaved</td></tr>
               <tr><td><b>Last Session:</b></td><td>${escHtml(health.lastSession ?: "n/a")}</td></tr>
               <tr><td><b>Storage:</b></td><td><code>$storageBar</code> <b>$usedMB MB</b> / $limitMB MB ($pct%)</td></tr>
             </table>
@@ -93,11 +84,6 @@ private fun statusIcon(status: String) = when (status) {
     "degraded" -> "⚠️"
     "setup_needed" -> "🔧"
     else -> "❌"
-}
-
-private fun formatMoney(amount: Double, currency: String): String {
-    val symbol = if (currency.equals("EUR", ignoreCase = true)) "€" else "\$"
-    return "$symbol${"%,.2f".format(amount)}"
 }
 
 private fun formatTokens(n: Int): String {
