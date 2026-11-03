@@ -88,6 +88,28 @@ class RegelwissenTest {
         assertEquals(emptyList<String>(), Regelwissen.ergaenzeGitExclude(tmp.newFolder("ohne")))
     }
 
+    // 03.11.2026, jetbrains-regelwissen-silent-project-file: Arbeitsbaum mit .git-Datei.
+    @Test
+    fun `git exclude im Arbeitsbaum landet im gemeinsamen Ordner`() {
+        val haupt = tmp.newFolder("haupt")
+        val wt = File(haupt, ".git/worktrees/zweig").apply { mkdirs() }
+        File(wt, "commondir").writeText("../..\n")
+        val w = tmp.newFolder("arbeitsbaum")
+        File(w, ".git").writeText("gitdir: ${wt.absolutePath}\n")
+        assertEquals(listOf("/${Regelwissen.PFAD}"), Regelwissen.ergaenzeGitExclude(w))
+        assertTrue(File(haupt, ".git/info/exclude").readText().contains("/${Regelwissen.PFAD}"))
+        assertEquals(emptyList<String>(), Regelwissen.ergaenzeGitExclude(w))
+    }
+
+    @Test
+    fun `git exclude bei Submodul mit relativem gitdir ohne commondir`() {
+        val sm = tmp.newFolder("sm")
+        File(sm, "innen/.git-ziel").mkdirs()
+        File(sm, "innen/.git").writeText("gitdir: .git-ziel\n")
+        assertEquals(listOf("/x.md"), Regelwissen.ergaenzeGitExclude(File(sm, "innen"), listOf("x.md")))
+        assertTrue(File(sm, "innen/.git-ziel/info/exclude").exists())
+    }
+
     @Test
     fun `relative Pfade nur aus dem Projekt, hoechstens zehn`() {
         val offen = listOf(

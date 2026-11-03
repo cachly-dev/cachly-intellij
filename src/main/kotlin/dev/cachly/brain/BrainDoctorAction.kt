@@ -58,9 +58,25 @@ class BrainDoctorAction : AnAction() {
                     check(memStatus == 200, "Memory readable", if (memStatus == 200) "" else "HTTP $memStatus")
                 }
 
-                val header = if (allOk) "🧠 Brain Doctor — all checks passed" else "🧠 Brain Doctor — problems found"
+                // 03.11.2026 (jetbrains-brain-doctor-passes-without-ai-side): die KI-Seite pruefen.
+                // Fehlt dort etwas, ist das ein Hinweis, kein Fehler: der Schluessel selbst ist in Ordnung.
+                val ki = KiSeitenPruefung.pruefe(project.basePath, s.apiKey)
+                val hinweise = ki.map { "! ${it}" }
+                lines.addAll(hinweise)
+
+                val header = when {
+                    !allOk -> "🧠 Brain Doctor — problems found"
+                    hinweise.isEmpty() -> "🧠 Brain Doctor — plugin and AI side OK"
+                    else -> "🧠 Brain Doctor — plugin to Brain OK, AI side incomplete"
+                }
+                val nurHinweise = allOk && hinweise.isNotEmpty()
                 javax.swing.SwingUtilities.invokeLater {
-                    if (allOk) Messages.showInfoMessage(project, lines.joinToString("\n"), header)
+                    if (allOk && !nurHinweise) Messages.showInfoMessage(project, lines.joinToString("\n"), header)
+                    else if (nurHinweise) Messages.showWarningDialog(
+                        project,
+                        lines.joinToString("\n") + "\n\nRun Tools → Set Up AI Files to fix the AI side.",
+                        header,
+                    )
                     else {
                         val choice = Messages.showDialog(
                             project,

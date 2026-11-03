@@ -283,7 +283,14 @@ object CachlyInstructionWriter {
                 val hook = File(hooks, "post-commit")
                 val existing = if (hook.exists()) hook.readText() else ""
                 if (existing.contains("cachly CLS")) {
-                    skipped.add(".git/hooks/post-commit")
+                    // 03.11.2026 (jetbrains-cls-hook-drops-lessons): den alten, kaputten Block erneuern.
+                    val erneuert = erneuereAltenClsHook(existing, instanceId)
+                    if (erneuert != null) {
+                        hook.writeText(erneuert)
+                        written.add(".git/hooks/post-commit")
+                    } else {
+                        skipped.add(".git/hooks/post-commit")
+                    }
                 } else {
                     val script = buildClsHook(instanceId)
                     if (existing.isNotBlank()) {
@@ -469,17 +476,51 @@ object CachlyInstructionWriter {
             - if: '${'$'}CI_PIPELINE_SOURCE == "merge_request_event"'
     """.trimIndent() + "\n"
 
-    private fun buildClsHook(instanceId: String): String = listOf(
-        "#!/bin/sh",
-        "# cachly CLS — Continuous Learning Stream (installed by Cachly IntelliJ plugin)",
-        "# Runs silently on every commit to keep your brain up to date.",
-        "CACHLY_INSTANCE=\"$instanceId\"",
-        "SHA=\$(git rev-parse HEAD 2>/dev/null || echo \"\")",
-        "MSG=\$(git log -1 --pretty=%B 2>/dev/null | head -1 | tr '\"' \"'\" | cut -c1-200)",
-        "FILES=\$(git diff-tree --no-commit-id -r --name-only HEAD 2>/dev/null | tr '\\n' ',' | sed 's/,\$//')",
-        "node -e \"try{require('child_process').execSync('npx @cachly-dev/mcp-server@latest cls-ingest \\\\''+ JSON.stringify({instance_id:'\$CACHLY_INSTANCE',source:'git_commit',payload:{message:'\$MSG',sha:'\$SHA',files:'\$FILES'.split(',').filter(Boolean)}})+'\\\\'' ,{stdio:'ignore',timeout:5000})}catch(e){}\" 2>/dev/null &",
-        "exit 0",
-    ).joinToString("\n")
+    /**
+     * Node-Programm fuer den Git-Hook (03.11.2026, jetbrains-cls-hook-drops-lessons).
+     * Es liest Instanz, Nachricht, Hash und Dateien aus Umgebungsvariablen und baut das
+     * JSON selbst. So steht die Commit-Nachricht nie im Shell- oder JS-Text.
+     * Das JSON geht als EIN Argument an cls-ingest, ohne dass je eine Shell es zerlegt:
+     * node startet npx-cli.js (liegt neben node) direkt mit process.execPath. Frueher lief
+     * es unter Windows ueber npx.cmd und damit ueber cmd.exe, das die Anfuehrungszeichen
+     * im JSON nicht versteht. Die zwei anderen Installer (MCP, VS Code) rufen
+     * execFileSync("npx") und scheitern unter Windows still (npx ist dort npx.cmd). Ohne
+     * npx-cli.js gibt es unter Windows keinen sicheren Weg (cls-ingest liest nur argv[3],
+     * keine Datei): dann passiert nichts, statt abgeschnittenes JSON zu senden.
+     * Es darf kein Apostroph enthalten, denn im Hook steht es in einfachen Anfuehrungszeichen.
+     */
+    internal val CLS_NODE_PROGRAMM = """try{var e=process.env,f=require("fs"),p=require("path"),c=require("child_process"),j=JSON.stringify({instance_id:e.CLS_ID,source:"git_commit",payload:{message:e.CLS_MSG||"",sha:e.CLS_SHA||"",files:(e.CLS_FILES||"").split(",").filter(Boolean)}}),a=["-y","@cachly-dev/mcp-server@latest","cls-ingest",j],o={stdio:"ignore",timeout:8000},d=p.dirname(process.execPath),k=[p.join(d,"node_modules","npm","bin","npx-cli.js"),p.join(d,"..","lib","node_modules","npm","bin","npx-cli.js")].filter(function(x){return f.existsSync(x)})[0];if(k)c.execFileSync(process.execPath,[k].concat(a),o);else if(process.platform!=="win32")c.execFileSync("npx",a,o)}catch(x){}"""
+
+    /** Kern des Hooks ohne Kopfzeile und ohne `exit`; auch zum Erneuern alter Hooks gebraucht. */
+    private fun clsHookKern(instanceId: String): String {
+        // Die ID steht in doppelten Anfuehrungszeichen im Shell-Skript: nur harmlose Zeichen.
+        val id = instanceId.filter { it.isLetterOrDigit() || it == '-' || it == '_' }
+        return listOf(
+            "# cachly CLS — Continuous Learning Stream (installed by Cachly IntelliJ plugin)",
+            "# Runs silently on every commit to keep your brain up to date.",
+            "CLS_ID=\"$id\"",
+            "CLS_SHA=\$(git rev-parse HEAD 2>/dev/null || echo \"\")",
+            "CLS_MSG=\$(git log -1 --pretty=%B 2>/dev/null | head -1 | cut -c1-200)",
+            "CLS_FILES=\$(git diff-tree --no-commit-id -r --name-only HEAD 2>/dev/null | tr '\\n' ',' | sed 's/,\$//')",
+            "export CLS_ID CLS_SHA CLS_MSG CLS_FILES",
+            "node -e '$CLS_NODE_PROGRAMM' >/dev/null 2>&1 &",
+        ).joinToString("\n")
+    }
+
+    internal fun buildClsHook(instanceId: String): String =
+        "#!/bin/sh\n" + clsHookKern(instanceId) + "\nexit 0"
+
+    /** Alter Hook (bis 0.10.x): Nachricht im Quelltext, kaputt unter Windows und bei Apostroph. */
+    private val ALTER_CLS_BLOCK = Regex(
+        """# cachly CLS[^\n]*\n(?:# Runs silently[^\n]*\n)?CACHLY_INSTANCE=[^\n]*\nSHA=[^\n]*\nMSG=[^\n]*\nFILES=[^\n]*\nnode -e [^\n]*""",
+    )
+
+    /** Ersetzt den alten Hook-Block durch den neuen. Gibt null zurueck, wenn nichts zu erneuern ist. */
+    internal fun erneuereAltenClsHook(vorhanden: String, instanceId: String): String? {
+        val text = vorhanden.replace("\r\n", "\n")
+        val m = ALTER_CLS_BLOCK.find(text) ?: return null
+        return text.replaceRange(m.range, clsHookKern(instanceId))
+    }
 
     /**
      * One Ambient Recall hook script. Kept byte-identical with the generators in

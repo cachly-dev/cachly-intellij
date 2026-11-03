@@ -2,6 +2,13 @@
 
 ---
 
+## [0.9.7] – 2026-11-03 — *"Every commit reaches the Brain, also on Windows"*
+
+### Fixed
+- **The git hook no longer loses commits.** It passed the commit message into a command line, so a message with an apostrophe or quotes broke it, and on Windows cmd.exe split the data at every space. Now the hook hands instance, message, hash and files to a small Node program through environment variables, and the program starts npm's `npx-cli.js` with the running `node`: no shell, the data stays one argument. Checked with a real `git commit` on Windows, with spaces, quotes, an apostrophe, `%` and `$` in the message. It is the same approach as the MCP setup (0.10.227) and the VS Code extension (0.12.15). Older cachly hook blocks are replaced when you set up the AI files; other content in the hook stays.
+- **Brain Doctor checks the AI side too.** Before, it said "all checks passed" when only the plugin's own connection worked. Now it also checks Node.js, the key in `~/.cachly/credentials.json`, the cachly entry in `.mcp.json` and the rule block in the AI rule files. If something is missing, it says "plugin to Brain OK, AI side incomplete" and names it.
+- **The local rule file is excluded from git in worktrees and submodules too.** The exclude used to land in a `.git` file instead of the real git folder.
+
 ## [0.9.6] – 2026-11-02 — *"Set up AI files in every project that lacks them"*
 
 ### Changed

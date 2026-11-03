@@ -56,13 +56,35 @@ object Regelwissen {
         s.replace(Regex("""<!-- Written by cachly [^ ]+\."""), "<!-- Written by cachly.")
 
     /**
+     * Ordner, in dem `info/exclude` gilt. Bei `.git` als Ordner ist es dieser. Bei einer
+     * `.git`-Datei (Arbeitsbaum, Submodul) steht darin `gitdir: <Pfad>`. Git liest die
+     * Ausnahmen aus dem gemeinsamen Ordner (`commondir`), nicht aus dem des Arbeitsbaums.
+     * 03.11.2026, jetbrains-regelwissen-silent-project-file: vorher passierte dort nichts,
+     * und die erzeugte Datei tauchte als ungetrackt auf. Null, wenn nichts davon passt.
+     */
+    internal fun gitOrdnerFuerExclude(wurzel: File): File? {
+        val git = File(wurzel, ".git")
+        if (git.isDirectory) return git
+        if (!git.isFile) return null
+        val zeile = git.readLines().firstOrNull { it.startsWith("gitdir:") } ?: return null
+        val roh = File(zeile.removePrefix("gitdir:").trim())
+        val gitdir = (if (roh.isAbsolute) roh else File(wurzel, roh.path)).canonicalFile
+        if (!gitdir.isDirectory) return null
+        val common = File(gitdir, "commondir")
+        if (common.isFile) {
+            val c = File(common.readText().trim())
+            val ziel = (if (c.isAbsolute) c else File(gitdir, c.path)).canonicalFile
+            if (ziel.isDirectory) return ziel
+        }
+        return gitdir
+    }
+
+    /**
      * Traegt [pfade] (relativ zu [wurzel], mit `/`) in `.git/info/exclude` ein, nur fehlende,
-     * am Ende. Liegt `.git` nicht als Ordner vor (Arbeitsbaum mit `.git`-Datei, kein Git),
-     * passiert nichts. Gibt die neu eingetragenen Zeilen zurueck. Wirft nie.
+     * am Ende. Ohne Git passiert nichts; `.git`-Dateien werden aufgeloest. Gibt die neu eingetragenen Zeilen zurueck. Wirft nie.
      */
     fun ergaenzeGitExclude(wurzel: File, pfade: List<String> = listOf(PFAD)): List<String> = runCatching {
-        val gitOrdner = File(wurzel, ".git")
-        if (!gitOrdner.isDirectory) return@runCatching emptyList<String>()
+        val gitOrdner = gitOrdnerFuerExclude(wurzel) ?: return@runCatching emptyList<String>()
         val datei = File(gitOrdner, "info/exclude")
         val alt = if (datei.exists()) datei.readText() else ""
         val zeilen = alt.split(Regex("""\r?\n""")).map { it.trim() }.toSet()
