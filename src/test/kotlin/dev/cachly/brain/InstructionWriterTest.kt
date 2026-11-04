@@ -30,8 +30,13 @@ class InstructionWriterTest {
     private val instanz = "8e03addd-a2d9-406e-bcbb-d6d8c938a3d0"
     private val url = "https://api.cachly.dev"
 
+    // Das Hook-Buendel (seit 0.9.8 in .claude/hooks/) liest CACHLY_JWT zur Laufzeit und enthaelt
+    // darum den Variablennamen — nie einen Wert. Es ist erzeugter Code, byte-gleich mit sdk/mcp
+    // (HookVorlageTest). Fuer den Namen zaehlt es nicht; die Suche nach dem Schluessel selbst
+    // laeuft weiter ueber alle Dateien.
     private fun projektdateienMitText(projekt: File, text: String): List<String> =
         projekt.walkTopDown()
+            .filter { !(text == "CACHLY_JWT" && it.name == CachlyInstructionWriter.HOOK_BUENDEL) }
             .filter { it.isFile && it.readText().contains(text) }
             .map { it.relativeTo(projekt).path.replace('\\', '/') }
             .toList()

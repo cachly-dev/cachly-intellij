@@ -2,6 +2,12 @@
 
 ---
 
+## [0.9.8] – 2026-11-04 — *"Memory in Claude Code arrives in time"*
+
+### Fixed
+- **The Claude Code hooks this plugin writes now work within their time limit.** "Set up AI files" wrote hook scripts that started `npx @cachly-dev/mcp-server@latest` on every prompt. That took 7.7 s with a warm npm cache and 17.1 s with a cold one, against a limit of 10 s. On a cold start, Claude Code got no memory at all. Now the plugin writes the same scripts as the MCP setup and the VS Code extension: they load a small hook file next to them (`.claude/hooks/cachly-ambient-einblendung.mjs`) in the same process, with no npx. A prompt hook now finishes in about 1.4 s, even when the Brain cannot be reached.
+- **The hook paths in `.claude/settings.json` work wherever the project lives.** The plugin used to write the absolute path of the scripts. Moving the folder or checking the file in for a colleague broke the hooks. Now it writes `${CLAUDE_PROJECT_DIR}/.claude/hooks/…`, like the MCP setup and the VS Code extension. Run "Set up AI files" once to update an existing project.
+
 ## [0.9.7] – 2026-11-03 — *"Every commit reaches the Brain, also on Windows"*
 
 ### Fixed
