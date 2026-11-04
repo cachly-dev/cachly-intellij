@@ -2,6 +2,12 @@
 
 ---
 
+## [0.9.9] – 2026-11-04 — *"The first commit after an update reaches the Brain too"*
+
+### Fixed
+- **The git hook no longer drops the first commit after each cachly update.** It gave the upload 8 seconds. Right after a new cachly version, the first commit has to download the package first, which can take up to 22.5 s. So that commit's lesson was lost. Now the hook allows 30 seconds, like the MCP setup and the VS Code extension. It runs in the background, so your commit is not slower.
+- **"Set up AI files" now updates a git hook written by 0.9.7 or 0.9.8, and a hook that points to a different Brain.** Before, it left any cachly hook from 0.9.7 on as it was. Other content in the hook stays.
+
 ## [0.9.8] – 2026-11-04 — *"Memory in Claude Code arrives in time"*
 
 ### Fixed

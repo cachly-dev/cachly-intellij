@@ -62,6 +62,54 @@ class ClsHookTest {
         assertEquals(null, CachlyInstructionWriter.erneuereAltenClsHook(neu, "inst-1"))
     }
 
+    private fun mcpClsHook(): String {
+        // Gradle startet Tests im Ordner sdk/intellij; zur Sicherheit nach oben suchen.
+        var d: File? = File("").absoluteFile
+        while (d != null) {
+            val f = File(d, "sdk/mcp/src/cls-hook.ts")
+            if (f.isFile) return f.readText()
+            d = d.parentFile
+        }
+        throw AssertionError("sdk/mcp/src/cls-hook.ts nicht gefunden (Start: ${File("").absolutePath}). Der Vergleich darf nicht still entfallen.")
+    }
+
+    private fun zeitgrenze(programm: String) = Regex("""timeout:(\d+)""").find(programm)?.groupValues?.get(1)
+
+    @Test
+    fun `Zeitgrenze des Node-Programms ist dieselbe wie im MCP-Hook (30 s)`() {
+        // 04.11.2026: bis 0.9.8 standen hier 8 s, im MCP-Hook 30 s. Der erste npx-Start nach jeder
+        // neuen MCP-Version laedt das Paket (gemessen bis 22,5 s) — mit 8 s ging dieser Commit verloren.
+        val quelle = mcpClsHook()
+        val start = quelle.indexOf("export const CLS_NODE_PROGRAM")
+        assertTrue("CLS_NODE_PROGRAM nicht gefunden", start > -1)
+        val mcp = zeitgrenze(quelle.substring(start, quelle.indexOf("}catch(e){}", start)))
+        assertNotNull("timeout im MCP-Programm nicht gefunden", mcp)
+        assertEquals(mcp, zeitgrenze(CachlyInstructionWriter.CLS_NODE_PROGRAMM))
+    }
+
+    @Test
+    fun `Block aus 0_9_7 mit 8 s wird erneuert, fremder Teil bleibt, aktueller Block bleibt stehen`() {
+        val kern8 = CachlyInstructionWriter.buildClsHook("inst-1")
+            .removePrefix("#!/bin/sh\n").removeSuffix("\nexit 0")
+            .replace("timeout:30000", "timeout:8000")
+        val alt = "#!/bin/sh\necho vorher\n\n$kern8\nexit 0\n"
+        val neu = CachlyInstructionWriter.erneuereAltenClsHook(alt, "inst-1")
+        assertNotNull(neu)
+        assertTrue(neu!!.contains("echo vorher"))
+        assertTrue(neu.contains("timeout:30000"))
+        assertFalse(neu.contains("timeout:8000"))
+        assertTrue(neu.endsWith("\nexit 0\n"))
+        assertEquals("aktueller Block: nichts zu erneuern", null, CachlyInstructionWriter.erneuereAltenClsHook(neu, "inst-1"))
+    }
+
+    @Test
+    fun `ein Block fuer eine andere Instanz wird auf die gewaehlte umgestellt`() {
+        val neu = CachlyInstructionWriter.erneuereAltenClsHook(CachlyInstructionWriter.buildClsHook("inst-1"), "inst-2")
+        assertNotNull(neu)
+        assertTrue(neu!!.contains("CLS_ID=\"inst-2\""))
+        assertFalse(neu.contains("CLS_ID=\"inst-1\""))
+    }
+
     @Test
     fun `Hook gibt das JSON als EIN Argument weiter, auch bei Leerzeichen, Anfuehrungszeichen, Apostroph und Zeilenumbruch`() {
         assumeTrue(kann("git", "--version") && kann("node", "--version") && kann("sh", "-c", "exit 0"))

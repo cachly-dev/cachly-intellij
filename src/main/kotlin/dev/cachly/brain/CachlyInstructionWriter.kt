@@ -501,8 +501,13 @@ object CachlyInstructionWriter {
      * npx-cli.js gibt es unter Windows keinen sicheren Weg (cls-ingest liest nur argv[3],
      * keine Datei): dann passiert nichts, statt abgeschnittenes JSON zu senden.
      * Es darf kein Apostroph enthalten, denn im Hook steht es in einfachen Anfuehrungszeichen.
+     *
+     * Zeitgrenze 30 s wie CLS_NODE_PROGRAM in sdk/mcp/src/cls-hook.ts (04.11.2026, bis 0.9.8: 8 s).
+     * Der erste npx-Start nach jeder neuen MCP-Version laedt das Paket, gemessen bis 22,5 s; mit
+     * 8 s brach er ab, und die Lektion dieses Commits ging verloren. Der Hook laeuft im
+     * Hintergrund, die laengere Grenze haelt niemanden auf. ClsHookTest vergleicht sie mit MCP.
      */
-    internal val CLS_NODE_PROGRAMM = """try{var e=process.env,f=require("fs"),p=require("path"),c=require("child_process"),j=JSON.stringify({instance_id:e.CLS_ID,source:"git_commit",payload:{message:e.CLS_MSG||"",sha:e.CLS_SHA||"",files:(e.CLS_FILES||"").split(",").filter(Boolean)}}),a=["-y","@cachly-dev/mcp-server@latest","cls-ingest",j],o={stdio:"ignore",timeout:8000},d=p.dirname(process.execPath),k=[p.join(d,"node_modules","npm","bin","npx-cli.js"),p.join(d,"..","lib","node_modules","npm","bin","npx-cli.js")].filter(function(x){return f.existsSync(x)})[0];if(k)c.execFileSync(process.execPath,[k].concat(a),o);else if(process.platform!=="win32")c.execFileSync("npx",a,o)}catch(x){}"""
+    internal val CLS_NODE_PROGRAMM = """try{var e=process.env,f=require("fs"),p=require("path"),c=require("child_process"),j=JSON.stringify({instance_id:e.CLS_ID,source:"git_commit",payload:{message:e.CLS_MSG||"",sha:e.CLS_SHA||"",files:(e.CLS_FILES||"").split(",").filter(Boolean)}}),a=["-y","@cachly-dev/mcp-server@latest","cls-ingest",j],o={stdio:"ignore",timeout:30000},d=p.dirname(process.execPath),k=[p.join(d,"node_modules","npm","bin","npx-cli.js"),p.join(d,"..","lib","node_modules","npm","bin","npx-cli.js")].filter(function(x){return f.existsSync(x)})[0];if(k)c.execFileSync(process.execPath,[k].concat(a),o);else if(process.platform!=="win32")c.execFileSync("npx",a,o)}catch(x){}"""
 
     /** Kern des Hooks ohne Kopfzeile und ohne `exit`; auch zum Erneuern alter Hooks gebraucht. */
     private fun clsHookKern(instanceId: String): String {
@@ -528,11 +533,21 @@ object CachlyInstructionWriter {
         """# cachly CLS[^\n]*\n(?:# Runs silently[^\n]*\n)?CACHLY_INSTANCE=[^\n]*\nSHA=[^\n]*\nMSG=[^\n]*\nFILES=[^\n]*\nnode -e [^\n]*""",
     )
 
-    /** Ersetzt den alten Hook-Block durch den neuen. Gibt null zurueck, wenn nichts zu erneuern ist. */
+    /**
+     * Block ab 0.9.7 (Programm aus Umgebungsvariablen). Weicht er vom aktuellen ab, etwa mit der
+     * Zeitgrenze 8 s bis 0.9.8 oder einer anderen Instanz, wird er ersetzt (04.11.2026).
+     */
+    private val CLS_BLOCK_AB_097 = Regex(
+        """# cachly CLS — Continuous Learning Stream \(installed by Cachly IntelliJ plugin\)\n# Runs silently[^\n]*\nCLS_ID=[^\n]*\nCLS_SHA=[^\n]*\nCLS_MSG=[^\n]*\nCLS_FILES=[^\n]*\nexport CLS_ID[^\n]*\nnode -e '[^\n]*' >/dev/null 2>&1 &""",
+    )
+
+    /** Ersetzt einen alten oder abweichenden Hook-Block durch den neuen. Gibt null zurueck, wenn nichts zu erneuern ist. */
     internal fun erneuereAltenClsHook(vorhanden: String, instanceId: String): String? {
         val text = vorhanden.replace("\r\n", "\n")
-        val m = ALTER_CLS_BLOCK.find(text) ?: return null
-        return text.replaceRange(m.range, clsHookKern(instanceId))
+        val kern = clsHookKern(instanceId)
+        ALTER_CLS_BLOCK.find(text)?.let { return text.replaceRange(it.range, kern) }
+        val m = CLS_BLOCK_AB_097.find(text) ?: return null
+        return if (m.value == kern) null else text.replaceRange(m.range, kern)
     }
 
     /** Das Hook-Buendel: eine Datei ohne node_modules, liegt neben den Skripten in .claude/hooks/. */
