@@ -96,6 +96,17 @@ class HookVorlageTest {
         assertFalse("absoluter Pfad in settings.json", settings.contains(projekt.absolutePath.replace('\\', '/')))
     }
 
+    @Test
+    fun `the settings_json hooks equal the MCP template (timeouts, matcher, command)`() {
+        val projekt = tmp.newFolder("projekt3")
+        val heim = tmp.newFolder("heim3")
+        CachlyInstructionWriter.writeAll(projekt.path, "http://127.0.0.1:9", "cky_live_testschluessel_0001", instanz, heim)
+
+        val geschrieben = CachlyInstructionWriter.parseJsoncObject(File(projekt, ".claude/settings.json").readText())["hooks"]
+        val soll = CachlyInstructionWriter.parseJsoncObject(CachlyInstructionWriter.hookRessource("cachly-ambient-settings.vorlage.json"))
+        assertEquals(soll, geschrieben)
+    }
+
     private fun kann(vararg cmd: String) = runCatching {
         val p = ProcessBuilder(*cmd).redirectErrorStream(true).start()
         p.inputStream.readBytes()
