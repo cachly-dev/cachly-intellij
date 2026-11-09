@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "dev.cachly"
-version = "0.9.10"
+version = "0.9.11"
 
 // ── Die eigene Version als Datei ins Paket legen ──────────────────────────
 //
@@ -201,11 +201,30 @@ intellijPlatform {
             ide(org.jetbrains.intellij.platform.gradle.IntelliJPlatformType.IntellijIdeaCommunity, "2024.1")
             ide(org.jetbrains.intellij.platform.gradle.IntelliJPlatformType.IntellijIdeaCommunity, "2025.2")
 
-            // ── DIE OBERE KANTE WIRD NICHT GEPRUEFT — und das ist bekannt ──
+            // ── OBERE KANTE: die neueste erschienene Fassung (seit 09.11.2026) ──
+            //
+            // 0.9.10 kam nicht durch den Marktplatz. Er prueft gegen die neueste
+            // Fassung; am 05.11.2026 erschien IntelliJ IDEA 2026.3 (263.7307.200).
+            // Unser Lauf gegen 2024.1/2025.2 war gruen, der Pruefer 1.411 gegen
+            // 2026.3 meldete "1 usage of deprecated API" (CredentialAttributes,
+            // siehe Ausweis.java).
+            //
+            // Seit 2025.3 gibt es keine eigene Community-Ausgabe mehr, nur noch
+            // das eine IntelliJ IDEA. Darum IntellijIdeaUltimate: das loest auf
+            // download.jetbrains.com/idea/ideaIU-<version> auf. Fuer den Pruefer
+            // braucht es keine Lizenz, er liest nur die Klassen.
+            //
+            // PFLEGE: Bei jeder neuen Fassung (x.1, x.2, x.3) diese Zeile
+            // anheben. Erschienene Fassungen:
+            // https://data.services.jetbrains.com/products/releases?code=IIU&latest=true&type=release
+            ide(org.jetbrains.intellij.platform.gradle.IntelliJPlatformType.IntellijIdeaUltimate, "2026.3")
+
+            // ── EAP WIRD WEITER NICHT GEPRUEFT — und das ist bekannt ──
             //
             // `untilBuild` ist null: Wir behaupten Vertraeglichkeit ohne
-            // Obergrenze. Geprueft wird nur bis 2025.2. Genau in dieser Luecke
-            // ist Version 0.8.0 haengengeblieben.
+            // Obergrenze. Geprueft wird bis zur neuesten ERSCHIENENEN Fassung
+            // (oben), nicht gegen Vorabfassungen. In dieser Luecke ist Version
+            // 0.8.0 haengengeblieben (geprueft wurde damals nur bis 2025.2).
             //
             // Der Marketplace-Verifier prueft gegen die NEUESTE Reihe. Sein
             // Lauf vom 21.08.2026 (Verifier 1.408) gegen
@@ -233,6 +252,21 @@ intellijPlatform {
             // `untilBuild` setzen, damit wir nicht mehr behaupten, als wir
             // pruefen. Siehe .agent/JETBRAINS-ANTWORT-9078085.md.
         }
+
+        // Rot nicht erst bei echten Unvertraeglichkeiten (Standard), sondern bei
+        // allem, was der Marktplatz bemaengelt: interne, veraltete und zur
+        // Entfernung vorgesehene Schnittstellen. Zweimal (0.8.0, 0.9.10) kam
+        // eine Fassung durch unseren Lauf und erst beim Marktplatz zurueck —
+        // nach Tagen in der Warteschlange. Jetzt bricht der Bau VOR dem Hochladen ab.
+        failureLevel = listOf(
+            org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask.FailureLevel.COMPATIBILITY_PROBLEMS,
+            org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask.FailureLevel.INVALID_PLUGIN,
+            org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask.FailureLevel.INTERNAL_API_USAGES,
+            org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask.FailureLevel.SCHEDULED_FOR_REMOVAL_API_USAGES,
+            org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask.FailureLevel.DEPRECATED_API_USAGES,
+            org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask.FailureLevel.OVERRIDE_ONLY_API_USAGES,
+            org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask.FailureLevel.NON_EXTENDABLE_API_USAGES,
+        )
     }
 }
 

@@ -2,6 +2,12 @@
 
 ---
 
+## [0.9.11] – 2026-11-09 — *"Ready for IntelliJ IDEA 2026.3"*
+
+### Fixed
+- **No deprecated API in IntelliJ IDEA 2026.3.** The plugin stores your API key in the IDE password safe. The way it named that entry used a constructor that 2026.3 marks as deprecated. It now uses the plain one that exists unchanged from 2024.1 to 2026.3. Your stored key stays where it is; the entry name is the same.
+- **Every release is now checked against the newest IntelliJ IDEA before upload.** The compatibility check runs against 2024.1, 2025.2 and 2026.3, and it stops the release on internal, deprecated or soon-removed API, not only on hard incompatibilities.
+
 ## [0.9.10] – 2026-11-09 — *"Your key travels in the header, not in the body"*
 
 ### Fixed

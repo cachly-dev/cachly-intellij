@@ -40,8 +40,10 @@ interface Ablage {
 /** Der Passwortspeicher der IDE (Schluesselbund, KeePass oder Master-Passwort — je nach Einstellung des Nutzers). */
 object PasswortSpeicher : Ablage {
 
+    // Ueber Ausweis (Java), nicht CredentialAttributes(...) direkt: der
+    // Kotlin-Aufruf landet auf einem Konstruktor, den 2026.3 als veraltet fuehrt.
     private val attribute: CredentialAttributes
-        get() = CredentialAttributes(generateServiceName("cachly", "apiKey"))
+        get() = Ausweis.fuer(generateServiceName("cachly", "apiKey"))
 
     override fun lesen(): String? {
         val anmeldedaten = PasswordSafe.instance.get(attribute) ?: return null
