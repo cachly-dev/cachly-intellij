@@ -423,7 +423,6 @@ object CachlyApiClient {
             // Ohne Fassung liess sich nicht sagen, welche Plugin-Version ein
             // Ereignis schickt (mcp_events.version war bei intellij immer leer).
             "version" to (gebauteVersion() ?: "dev"),
-            "api_key" to settings.apiKey,
             "instance_id" to settings.instanceId,
         ))
         try {
@@ -434,6 +433,8 @@ object CachlyApiClient {
             conn.doOutput = true
             conn.setRequestProperty("Content-Type", "application/json")
             conn.setRequestProperty("User-Agent", USER_AGENT)
+            // Der Schluessel reist nur im Kopf, nie im Rumpf; ohne Schluessel kein Kopf.
+            if (settings.apiKey.isNotBlank()) conn.setRequestProperty("Authorization", "Bearer ${settings.apiKey.trim()}")
             conn.outputStream.bufferedWriter().use { it.write(body) }
             conn.responseCode // drain — telemetry must never break UX
         } catch (_: Exception) { /* silently ignore */ }

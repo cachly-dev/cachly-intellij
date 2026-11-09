@@ -2,6 +2,11 @@
 
 ---
 
+## [0.9.10] – 2026-11-09 — *"Your key travels in the header, not in the body"*
+
+### Fixed
+- **The usage ping no longer puts your API key in the request body.** With statistics allowed, the plugin sends a usage event to `/api/v1/telemetry/mcp`, and the key lets the server count it for your account. Until now the body held that key in the field `api_key`. Now the key travels only in the `Authorization: Bearer` header, like every other call to the API. Without a key, no header is sent. The event itself is unchanged.
+
 ## [0.9.9] – 2026-11-04 — *"The first commit after an update reaches the Brain too"*
 
 ### Fixed
