@@ -22,8 +22,11 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      # Die Tests brauchen Quellen aus dem Monorepo (sdk/mcp, api). Im Spiegel
+      # liegen die nicht daneben. Sie laufen im Monorepo in
+      # .github/workflows/ci.yml (bereich sdk_intellij). Der Spiegel baut nur.
       - name: Build plugin
-        run: ./gradlew build --no-daemon --stacktrace
+        run: ./gradlew build -x test --no-daemon --stacktrace
 
       - name: Verify plugin
         run: ./gradlew verifyPlugin --no-daemon --stacktrace
