@@ -121,13 +121,14 @@ Details: [Privacy policy](https://cachly.dev/legal/datenschutz).
 
 The plugin is free. It connects to your cachly Brain instance:
 
-| Tier | RAM | Price |
-|------|-----|-------|
-| **Free** | 25 MB | €0/mo |
-| **Dev** | 200 MB | €19/mo |
-| **Pro** | 900 MB | €49/mo |
-| **Speed** | 900 MB Dragonfly + Semantic Cache | €79/mo |
-| **Business** | 7 GB | €199/mo |
+| Plan | Price | People | Storage |
+|------|-------|--------|---------|
+| **Free** | €0 | 1 | 25 MB |
+| **Solo** | €19/month | 1 | 200 MB |
+| **Team** | €49/month | up to 5 | 900 MB |
+| **Business** | €199/month | up to 20, with SSO | 7 GB |
+
+Yearly prices and current limits: [cachly.dev/pricing](https://cachly.dev/pricing).
 
 ---
 
