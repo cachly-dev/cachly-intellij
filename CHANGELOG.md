@@ -2,6 +2,11 @@
 
 ---
 
+## [0.9.12] – 2026-11-16 — *"Sign in once, and say so"*
+
+### Fixed
+- **The Marketplace text now says what happens on first start.** Since 2026-11-06 a new Brain needs a sign-in; the anonymous trial is switched off on the server. The plugin description, the README and the "Connect Brain" action still promised a trial "without an account". They now say: once you agree, the plugin opens the browser once to sign in with GitHub, Google or e-mail. The plugin's behaviour is unchanged; it already fell back to this sign-in (device flow).
+
 ## [0.9.11] – 2026-11-09 — *"Ready for IntelliJ IDEA 2026.3"*
 
 ### Fixed

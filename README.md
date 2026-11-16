@@ -5,7 +5,7 @@
 >
 > **This plugin puts that memory in front of you** — lessons learned, tokens saved, session history and brain health, right in your IDE's status bar. Works in every JetBrains IDE.
 >
-> **Nothing to sign up for.** Once you agree, the plugin fetches a free trial brain by itself — no account, no credit card, no key to paste. Link an account later to keep the data. EU servers, GDPR.
+> **Sign in once, then it runs.** Once you agree, the plugin opens your browser once: sign in with GitHub, Google or e-mail. A new account gets 14 days of the Solo plan, then continues on Free. No credit card, no key to paste. EU servers, GDPR.
 
 <p align="center">
   <a href="https://plugins.jetbrains.com/plugin/32059-cachly-brain">
@@ -94,7 +94,7 @@ The plugin asks once, before it sends anything: one dialog, two questions.
 
 | Question | Default | What is sent |
 |----------|---------|--------------|
-| **Use the Brain** (file briefings, lessons, health checks) | on | The path of each file you open, relative to the project (for example `src/app/main.ts`), to look up matching lessons. The lessons you save or recall. Health checks while the IDE is in use. The request for a free trial Brain. **File contents are never sent.** |
+| **Use the Brain** (file briefings, lessons, health checks) | on | The path of each file you open, relative to the project (for example `src/app/main.ts`), to look up matching lessons. The lessons you save or recall. Health checks while the IDE is in use. The request for a key on first start. **File contents are never sent.** |
 | **Share usage statistics** | off | The name of an event (for example `session_start`), the plugin version, your instance ID and your API key, so the event is counted for your account. Never file names, file contents or code. |
 
 - **Until you answer, nothing is sent.** Closing the dialog counts as "no" to both questions.

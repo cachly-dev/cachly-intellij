@@ -6,8 +6,8 @@
         <p><b>ChatGPT and Claude remember your conversations. <a href="https://cachly.dev">cachly</a> remembers your
         codebase.</b> The bug you fixed. Why you chose Postgres. The deploy step that always breaks — and everything
         your teammates learned.</p>
-        <p><b>Free, and you can try it without an account</b> — once you agree, the plugin fetches a trial brain by
-        itself. Nothing to sign up for, no key to paste. EU servers, GDPR.</p>
+        <p><b>Free plan, one sign-in</b> — once you agree, the plugin opens your browser once to sign in with
+        GitHub, Google or e-mail. No key to paste. EU servers, GDPR.</p>
         <p><b>Privacy:</b> the plugin asks before it sends anything. It can send the relative path of the files you
         open (never their contents) and your lessons to api.cachly.dev; usage statistics are a separate, optional
         choice. Your API key is kept in the IDE password safe. See the
@@ -54,7 +54,7 @@
         <action id="Cachly.ConnectBrain"
                 class="dev.cachly.brain.ConnectBrainAction"
                 text="Connect Brain"
-                description="Get a Cachly Brain key — trial without an account, or link an existing one">
+                description="Get a Cachly Brain key — sign in in the browser, or link an existing one">
             <add-to-group group-id="ToolsMenu" anchor="last"/>
         </action>
         <action id="Cachly.LinkAccount"
