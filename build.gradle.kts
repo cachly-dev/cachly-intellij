@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "dev.cachly"
-version = "0.9.12"
+version = "0.9.13"
 
 // ── Die eigene Version als Datei ins Paket legen ──────────────────────────
 //
@@ -152,8 +152,9 @@ intellijPlatform {
               <li><b>Status bar widget</b> &mdash; live lesson count, brain health, and estimated tokens saved.</li>
               <li><b>Lesson viewer</b> &mdash; browse every learned lesson with recall counts and severity.</li>
             </ul>
-            <p><b>Try it without an account.</b> Once you agree, the plugin fetches a free trial brain by itself
-            &mdash; no sign-up, no credit card, no key to paste. Link an account later to keep the data.</p>
+            <p><b>Free plan, one sign-in.</b> Once you agree, the plugin opens your browser once to sign in with
+            GitHub, Google or e-mail. A new account gets 14 days of the Solo plan, then continues on Free.
+            No credit card, no key to paste.</p>
             <p><b>Privacy.</b> The plugin asks before it sends anything. It can send the relative path of the files you open
             (never their contents) and your lessons to api.cachly.dev; usage statistics are a separate, optional choice.
             Your API key is kept in the IDE password safe. See the

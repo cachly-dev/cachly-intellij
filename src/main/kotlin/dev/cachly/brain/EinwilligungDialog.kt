@@ -72,8 +72,8 @@ class EinwilligungDialog(project: Project?) : DialogWrapper(project, false) {
                 "<body style='width: 440px'>" +
                     "<b>What is sent:</b> the path of each file you open, relative to the project (for example " +
                     "<code>src/app/main.ts</code>), to look up lessons that match it; the lessons you save or " +
-                    "recall; health checks every few minutes while the IDE is in use; and the request for a free " +
-                    "trial Brain on first start. <b>File contents are never sent.</b><br>" +
+                    "recall; health checks every few minutes while the IDE is in use; and the request for a key " +
+                    "on first start. <b>File contents are never sent.</b><br>" +
                     "<b>Why:</b> so the Brain can warn you about a known failure pattern in a file, and keep your lessons.<br>" +
                     "Your API key is kept in the password safe of your IDE, not in a settings file." +
                     "</body>",

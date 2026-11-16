@@ -2,6 +2,12 @@
 
 ---
 
+## [0.9.13] – 2026-11-16 — *"The Marketplace page says it too"*
+
+### Fixed
+- **The Marketplace description now names the sign-in.** 0.9.12 changed the text in `plugin.xml`, but the Marketplace page takes its description from the build file, and that one still said "Try it without an account … no sign-up". It now says: once you agree, the plugin opens your browser once to sign in with GitHub, Google or e-mail; a new account gets 14 days of the Solo plan, then continues on Free.
+- **The consent dialog lists "the request for a key on first start"** instead of "the request for a free trial Brain". The plugin's behaviour is unchanged.
+
 ## [0.9.12] – 2026-11-16 — *"Sign in once, and say so"*
 
 ### Fixed
