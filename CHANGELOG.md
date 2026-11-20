@@ -2,6 +2,11 @@
 
 ---
 
+## [0.9.14] – 2026-11-20 — *"The new mark"*
+
+### Changed
+- **The plugin icon is the cachly mark now.** The orange square with the "c." replaces the old violet lightning bolt, the same mark as on cachly.dev and in the MCP Registry. The plugin's behaviour is unchanged.
+
 ## [0.9.13] – 2026-11-16 — *"The Marketplace page says it too"*
 
 ### Fixed
