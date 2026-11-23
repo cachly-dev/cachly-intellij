@@ -124,7 +124,7 @@ The plugin is free. It connects to your cachly Brain instance:
 | Plan | Price | People | Storage |
 |------|-------|--------|---------|
 | **Free** | €0 | 1 | 25 MB |
-| **Solo** | €19/month | 1 | 200 MB |
+| **Solo** | €9.90/month | 1 | 200 MB |
 | **Team** | €49/month | up to 5 | 900 MB |
 | **Business** | €199/month | up to 20, with SSO | 7 GB |
 
