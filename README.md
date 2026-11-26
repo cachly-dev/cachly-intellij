@@ -1,9 +1,9 @@
 # 🧠 Your AI Brain, Visible Inside IntelliJ
 
-> **ChatGPT and Claude remember your conversations. cachly remembers your codebase.**  
-> The bug you fixed. Why you chose Postgres. The deploy step that always breaks — and everything your teammates learned. It stays when someone leaves the team, and it comes along when you switch assistants.
+> **Explain it once. Every AI knows it.**  
+> The bug you fixed. Why you chose Postgres. The deploy step that always breaks — and everything your teammates learned. cachly keeps your project's rules, decisions and fixes, so they stay when someone leaves the team and every AI tool reads them. Claude and ChatGPT remember your preferences; cachly keeps what your project has learned.
 >
-> **This plugin puts that memory in front of you** — lessons learned, tokens saved, session history and brain health, right in your IDE's status bar. Works in every JetBrains IDE.
+> **This plugin puts that knowledge in front of you** — lessons learned, tokens saved, session history and brain health, right in your IDE's status bar. Works in every JetBrains IDE.
 >
 > **Sign in once, then it runs.** Once you agree, the plugin opens your browser once: sign in with GitHub, Google or e-mail. A new account gets 14 days of the Solo plan, then continues on Free. No credit card, no key to paste. EU servers, GDPR.
 

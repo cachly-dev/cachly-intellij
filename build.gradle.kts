@@ -140,10 +140,11 @@ intellijPlatform {
         //     Repo-Pfade zeigen nichts an. Alle drei am 17.08.2026 mit HTTP 200
         //     und image/png geprueft.
         description = """
-            <p><b>ChatGPT and Claude remember your conversations. <a href="https://cachly.dev">cachly</a> remembers your codebase.</b></p>
+            <p><b>Explain it once. Every AI knows it. <a href="https://cachly.dev">cachly</a> keeps your project's rules, decisions and fixes.</b></p>
             <p>The bug you fixed. Why you chose Postgres. The deploy step that always breaks &mdash; and everything
-            your teammates learned. It stays when someone leaves the team, and it comes along when you switch
-            assistants. This plugin brings that memory into your JetBrains IDE.</p>
+            your teammates learned. It stays when someone leaves the team, and every AI tool reads it. Claude and
+            ChatGPT remember your preferences; cachly keeps what your project has learned. This plugin brings it
+            into your JetBrains IDE.</p>
             <ul>
               <li><b>One-click setup</b> &mdash; "Set Up AI Files" writes your MCP config, agent instructions, and a git post-commit learning hook. No terminal needed.</li>
               <li><b>Brain Doctor</b> &mdash; diagnoses your connection (API key, instance, network) and points you straight to the fix.</li>
