@@ -2,6 +2,11 @@
 
 ---
 
+## [0.9.15] – 2026-11-27 — *"The light mark"*
+
+### Changed
+- **New mark: a light "c." with a green dot (no more orange).** The plugin icon matches cachly.dev and the VS Code extension. The plugin's behaviour is unchanged.
+
 ## [0.9.14] – 2026-11-20 — *"The new mark"*
 
 ### Changed
