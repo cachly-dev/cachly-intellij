@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "dev.cachly"
-version = "0.9.15"
+version = "0.9.16"
 
 // ── Die eigene Version als Datei ins Paket legen ──────────────────────────
 //

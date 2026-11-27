@@ -2,6 +2,11 @@
 
 ---
 
+## [0.9.16] – 2026-11-27 — *"The yellow c. is back"*
+
+### Changed
+- **The yellow "c." is back as the logo.** The plugin icon matches cachly.dev again. The plugin's behaviour is unchanged.
+
 ## [0.9.15] – 2026-11-27 — *"The light mark"*
 
 ### Changed
