@@ -33,6 +33,7 @@ class InstanzVerlustTest {
     private val aufrufe = CopyOnWriteArrayList<String>()
 
     @Volatile private var instanzCode = 404
+    @Volatile private var instanzBody = """{"error":"not found","grund":"leer_abgeraeumt"}"""
     @Volatile private var autoCode = 201
     @Volatile private var autoBody = """{"instance_id":"$neueId","status":"provisioning","created":true}"""
 
@@ -46,7 +47,7 @@ class InstanzVerlustTest {
         server.createContext("/") { ex ->
             aufrufe += "${ex.requestMethod} ${ex.requestURI.path}"
             val (code, body) = if (ex.requestURI.path.endsWith("/instances/auto")) autoCode to autoBody
-            else instanzCode to """{"error":"x"}"""
+            else instanzCode to instanzBody
             val bytes = body.toByteArray()
             ex.sendResponseHeaders(code, bytes.size.toLong())
             ex.responseBody.use { it.write(bytes) }
@@ -84,7 +85,7 @@ class InstanzVerlustTest {
         einrichten(testKey)
         val a = InstanzVerlust.behandle(heim)
 
-        assertEquals(InstanzVerlust.Ausgang.Neu(alteId, neueId, angelegt = true, testBrain = true), a)
+        assertEquals(InstanzVerlust.Ausgang.Neu(alteId, neueId, angelegt = true, testBrain = true, leerAbgeraeumt = true), a)
         assertEquals(neueId, einstellungen.state.instanceId)
         assertEquals(1, autoAufrufe())
         assertEquals(
@@ -92,6 +93,36 @@ class InstanzVerlustTest {
                 "cachly created a new, empty Brain for you. Nothing was lost: the old one had no saved lessons.",
             InstanzVerlust.text(a),
         )
+    }
+
+    @Test
+    fun `404 with trial key but WITHOUT grund - neutral message, no 14 days, no nothing-was-lost`() {
+        einrichten(testKey)
+        instanzBody = """{"error":"not found"}"""
+        val a = InstanzVerlust.behandle(heim)
+
+        assertEquals(InstanzVerlust.Ausgang.Neu(alteId, neueId, angelegt = true, testBrain = true, leerAbgeraeumt = false), a)
+        assertEquals(1, autoAufrufe())
+        val t = InstanzVerlust.text(a)
+        assertEquals("Your trial Brain $alteId no longer exists. cachly created a new, empty Brain for you.", t)
+        assertFalse(t.contains("14 days"))
+        assertFalse(t.contains("Nothing was lost"))
+    }
+
+    @Test
+    fun `404 with another grund - neutral message`() {
+        einrichten(testKey)
+        instanzBody = """{"error":"not found","grund":"etwas_anderes"}"""
+        val t = InstanzVerlust.text(InstanzVerlust.behandle(heim))
+        assertFalse(t.contains("14 days"))
+        assertFalse(t.contains("Nothing was lost"))
+    }
+
+    @Test
+    fun `the caller already knows the 404 - the grund is still read from the answer`() {
+        einrichten(testKey)
+        val a = InstanzVerlust.behandle(heim, bekannterStatus = 404)
+        assertTrue((a as InstanzVerlust.Ausgang.Neu).leerAbgeraeumt)
     }
 
     @Test
@@ -112,7 +143,7 @@ class InstanzVerlustTest {
         einrichten(kontoKey)
         val a = InstanzVerlust.behandle(heim, ausdruecklich = true)
 
-        assertEquals(InstanzVerlust.Ausgang.Neu(alteId, neueId, angelegt = true, testBrain = false), a)
+        assertEquals(InstanzVerlust.Ausgang.Neu(alteId, neueId, angelegt = true, testBrain = false, leerAbgeraeumt = true), a)
         assertEquals(neueId, einstellungen.state.instanceId)
         assertEquals(1, autoAufrufe())
     }

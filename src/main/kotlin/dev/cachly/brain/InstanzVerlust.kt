@@ -37,8 +37,18 @@ object InstanzVerlust {
         /** 404 gab es nicht, oder diese Sitzung hat es schon behandelt: nichts zu tun. */
         object Nichts : Ausgang()
 
-        /** Neue ID gespeichert. [testBrain]: der Schluessel ist ein Sofort-Test-Schluessel. */
-        data class Neu(val alteId: String, val neueId: String, val angelegt: Boolean, val testBrain: Boolean) : Ausgang()
+        /**
+         * Neue ID gespeichert. [testBrain]: der Schluessel ist ein Sofort-Test-Schluessel.
+         * [leerAbgeraeumt]: die API hat in der 404-Antwort `grund: "leer_abgeraeumt"` genannt; nur dann
+         * stimmt "14 Tage leer und unbenutzt, nichts verloren".
+         */
+        data class Neu(
+            val alteId: String,
+            val neueId: String,
+            val angelegt: Boolean,
+            val testBrain: Boolean,
+            val leerAbgeraeumt: Boolean = false,
+        ) : Ausgang()
 
         /** Registrierter Schluessel: Brain weg, es wurde NICHTS angelegt. */
         data class KontoBrainFehlt(val id: String) : Ausgang()
@@ -48,6 +58,9 @@ object InstanzVerlust {
     }
 
     private const val DASHBOARD_BRAINS = "https://cachly.dev/instances"
+
+    /** Loeschgrund in der 404-Antwort der API (api/internal/model/instance.go, GrundLeerAbgeraeumt). */
+    internal const val GRUND_LEER_ABGERAEUMT = "leer_abgeraeumt"
 
     /** Hat diese IDE-Sitzung schon /instances/auto fuer ein verlorenes Test-Brain versucht? */
     private val autoVersucht = AtomicBoolean(false)
@@ -75,35 +88,53 @@ object InstanzVerlust {
         val alteId = s.instanceId.trim()
         if (!darfFunktion(s) || key.isEmpty() || alteId.isEmpty()) {
             Ausgang.Nichts
-        } else if ((bekannterStatus ?: CachlyApiClient.instanzStatus(alteId)) != 404) {
-            // 401/403/Netz/200: altes Verhalten, hier gibt es nichts zu retten.
+        } else if (bekannterStatus != null && bekannterStatus != 404) {
             Ausgang.Nichts
         } else {
-            val testBrain = TestBrainUebernahme.istTestSchluessel(key)
-            if (testBrain || ausdruecklich) {
-                if (testBrain && !ausdruecklich && !autoVersucht.compareAndSet(false, true)) {
-                    Ausgang.Nichts
-                } else {
-                    legeNeuAn(s, alteId, testBrain, heim)
-                }
-            } else if (gemeldet.add(alteId)) {
-                Ausgang.KontoBrainFehlt(alteId)
-            } else {
+            // Eine Anfrage: sie liefert den Status UND, bei 404, den Loeschgrund. Kennt der Aufrufer
+            // das 404 schon, zaehlt sein Status; die Anfrage holt dann nur den Grund.
+            val abfrage = CachlyApiClient.instanzAbfrage(alteId)
+            if ((bekannterStatus ?: abfrage.status) != 404) {
+                // 401/403/Netz/200: altes Verhalten, hier gibt es nichts zu retten.
                 Ausgang.Nichts
+            } else {
+                entscheide(s, key, alteId, abfrage.grund == GRUND_LEER_ABGERAEUMT, ausdruecklich, heim)
             }
         }
     } catch (_: Exception) {
         Ausgang.Nichts
     }
 
-    private fun legeNeuAn(s: CachlySettings.State, alteId: String, testBrain: Boolean, heim: File): Ausgang =
+    private fun entscheide(
+        s: CachlySettings.State,
+        key: String,
+        alteId: String,
+        leerAbgeraeumt: Boolean,
+        ausdruecklich: Boolean,
+        heim: File,
+    ): Ausgang {
+        val testBrain = TestBrainUebernahme.istTestSchluessel(key)
+        return if (testBrain || ausdruecklich) {
+            if (testBrain && !ausdruecklich && !autoVersucht.compareAndSet(false, true)) {
+                Ausgang.Nichts
+            } else {
+                legeNeuAn(s, alteId, testBrain, heim, leerAbgeraeumt)
+            }
+        } else if (gemeldet.add(alteId)) {
+            Ausgang.KontoBrainFehlt(alteId)
+        } else {
+            Ausgang.Nichts
+        }
+    }
+
+    private fun legeNeuAn(s: CachlySettings.State, alteId: String, testBrain: Boolean, heim: File, leerAbgeraeumt: Boolean): Ausgang =
         when (val r = CachlyApiClient.requestAutoInstance()) {
             is CachlyApiClient.AutoErgebnis.Fehler -> Ausgang.Scheitert(r.code, r.grund, testBrain)
             is CachlyApiClient.AutoErgebnis.Id -> {
                 s.instanceId = r.id
                 // Im Heimordner nur, wenn dort genau die alte ID stand (anderes Setup bleibt).
                 CachlyInstructionWriter.ersetzeHeimInstanz(alteId, r.id, heim)
-                Ausgang.Neu(alteId, r.id, r.neu, testBrain)
+                Ausgang.Neu(alteId, r.id, r.neu, testBrain, leerAbgeraeumt)
             }
         }
 
@@ -161,12 +192,17 @@ object InstanzVerlust {
         Ausgang.Nichts -> ""
         is Ausgang.KontoBrainFehlt -> "The Brain ${a.id} no longer exists in your account."
         is Ausgang.Neu ->
-            if (a.testBrain && a.angelegt) {
+            // "14 Tage leer, nichts verloren" nur, wenn die API den Grund genannt hat.
+            if (a.testBrain && a.angelegt && a.leerAbgeraeumt) {
                 "Your trial Brain was removed because it stayed empty and unused for 14 days. " +
                     "cachly created a new, empty Brain for you. Nothing was lost: the old one had no saved lessons."
-            } else if (a.testBrain) {
+            } else if (a.testBrain && a.angelegt) {
+                "Your trial Brain ${a.alteId} no longer exists. cachly created a new, empty Brain for you."
+            } else if (a.testBrain && a.leerAbgeraeumt) {
                 "Your trial Brain was removed because it stayed empty and unused for 14 days. " +
                     "cachly switched to the Brain ${a.neueId} that your key already had. Nothing was lost: the old one had no saved lessons."
+            } else if (a.testBrain) {
+                "Your trial Brain ${a.alteId} no longer exists. cachly switched to the Brain ${a.neueId} that your key already had."
             } else {
                 "The Brain ${a.alteId} no longer exists. The plugin now uses the Brain ${a.neueId}."
             }
@@ -187,8 +223,8 @@ object InstanzVerlust {
     /** Zeile im Brain Doctor bei 404: Grund und naechster Schritt statt "wrong instance ID?". */
     internal fun doctorGrund(apiKey: String): String =
         if (TestBrainUebernahme.istTestSchluessel(apiKey)) {
-            "not found (404) — the key is accepted, but this trial Brain no longer exists " +
-                "(empty and unused trial Brains are removed after 14 days). Next: Tools → Connect Brain creates a new one."
+            "not found (404) — the key is accepted, but this trial Brain no longer exists. " +
+                "Next: Tools → Connect Brain creates a new one."
         } else {
             "not found (404) — the key is accepted, but this Brain no longer exists in your account. " +
                 "Next: Tools → Connect Brain picks or creates a Brain, or check cachly.dev/instances."

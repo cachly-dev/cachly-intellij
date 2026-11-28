@@ -2,6 +2,11 @@
 
 ---
 
+## [0.9.18] – 2026-11-28 — *"Only say what is true"*
+
+### Fixed
+- **The notice about a removed trial Brain is now true.** "Stayed empty and unused for 14 days ... Nothing was lost" appears only when the server says its cleanup job removed the Brain (field `grund: "leer_abgeraeumt"` in the 404 answer). Otherwise the plugin says: "Your trial Brain <id> no longer exists. cachly created a new, empty Brain for you." The Brain Doctor line no longer states a reason it cannot know. Registered accounts are unchanged.
+
 ## [0.9.17] – 2026-11-28 — *"A removed trial Brain is said out loud"*
 
 ### Fixed

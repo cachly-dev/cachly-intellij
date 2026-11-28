@@ -588,6 +588,25 @@ object CachlyApiClient {
     fun instanzStatus(instanceId: String): Int =
         httpGetMitStatus("${apiBase()}/api/v1/instances/$instanceId", CachlySettings.getInstance().state.apiKey).first
 
+    /** Antwort von GET /instances/<id> fuer [InstanzVerlust]: [status] (-1 = Netz) und, bei 404, das Feld `grund`. */
+    data class InstanzAbfrage(val status: Int, val grund: String?)
+
+    /**
+     * Wie [instanzStatus], liest aber bei 404 zusaetzlich `grund` aus der Antwort. Die API nennt ihn nur,
+     * wenn der Abraeumer das Brain DIESES Kontos geloescht hat ("leer_abgeraeumt"); sonst fehlt das Feld.
+     */
+    fun instanzAbfrage(instanceId: String): InstanzAbfrage {
+        val (code, text) = httpMitStatus("GET", "${apiBase()}/api/v1/instances/$instanceId",
+            CachlySettings.getInstance().state.apiKey, null)
+        return InstanzAbfrage(code, if (code == 404) grundAusAntwort(text) else null)
+    }
+
+    /** Das Feld `grund` einer Fehlerantwort, sonst null. */
+    internal fun grundAusAntwort(text: String?): String? = try {
+        com.google.gson.JsonParser.parseString(text ?: "").asJsonObject
+            .get("grund")?.takeIf { it.isJsonPrimitive }?.asString?.takeIf { it.isNotBlank() }
+    } catch (_: Exception) { null }
+
     /** Antwort von POST /instances/auto fuer [InstanzVerlust]. */
     sealed class AutoErgebnis {
         /** [neu] = der Server hat angelegt (201); false = er gab ein vorhandenes Brain zurueck (200). */
