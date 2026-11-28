@@ -66,7 +66,10 @@ class CachlyStatusBarWidget(private val project: Project) :
         // Rueckkehr in die IDE geht es weiter.
         if (!ApplicationManager.getApplication().isActive) return
         try {
-            render(CachlyApiClient.fetchHealth())
+            val health = CachlyApiClient.fetchHealth()
+            render(health)
+            // Brain weg (404): einmal je IDE-Sitzung behandeln, danach still (InstanzVerlust).
+            if (health.status == "not_found") InstanzVerlust.pruefeUndMelde(null, bekannterStatus = 404)
         } catch (_: Exception) {
             SwingUtilities.invokeLater {
                 currentText = "🧠 Brain: error"
@@ -88,13 +91,14 @@ class CachlyStatusBarWidget(private val project: Project) :
     private fun render(health: BrainHealth) {
         try {
             // Brain is reachable — attempt to flush any offline-queued lessons
-            if (health.status != "unreachable" && health.status != "not_configured") {
+            if (health.status != "unreachable" && health.status != "not_configured" && health.status != "not_found") {
                 CachlyApiClient.drainOfflineQueue()
             }
             val settings = CachlySettings.getInstance().state
             val text = when (health.status) {
                 "not_configured" -> "🧠 Cachly: not configured"
                 "unreachable" -> "🧠 Brain: offline"
+                "not_found" -> "🧠 Brain: not found"
                 else -> buildStatusText(health, settings)
             }
             SwingUtilities.invokeLater {

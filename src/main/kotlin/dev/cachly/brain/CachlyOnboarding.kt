@@ -35,7 +35,7 @@ import com.intellij.openapi.project.Project
  */
 object CachlyOnboarding {
 
-    private const val GROUP = "Cachly Brain Ambient"
+    internal const val GROUP = "Cachly Brain Ambient"
     private const val DASHBOARD = "https://cachly.dev/dashboard"
 
     /**
@@ -107,6 +107,12 @@ object CachlyOnboarding {
                     // Key without instance: "already connected" would be a lie —
                     // nothing works until the instance id is there.
                     firstContact(project, trial = state.trialEndsAt.isNotBlank())
+                    return@executeOnPooledThread
+                }
+                // Schluessel + ID heisst nicht "verbunden": ist das Brain weg (404), sagt das
+                // der Hinweis und legt (nur beim Test-Schluessel, auf diesen Klick hin) ein neues an.
+                if (CachlyApiClient.instanzStatus(state.instanceId) == 404) {
+                    InstanzVerlust.pruefeUndMelde(project, bekannterStatus = 404, ausdruecklich = true)
                     return@executeOnPooledThread
                 }
                 notify(project, "Cachly Brain is already connected.", NotificationType.INFORMATION)
@@ -186,7 +192,8 @@ object CachlyOnboarding {
             if (project.isDisposed) return
 
             val reached = health != null &&
-                health.status != "unreachable" && health.status != "not_configured"
+                health.status != "unreachable" && health.status != "not_configured" &&
+                health.status != "not_found"
             if (reached) {
                 announceConnected(project, health!!, trial)
                 AiAssistantAnbindung.anbieten(project)
@@ -194,7 +201,7 @@ object CachlyOnboarding {
                 // Ein frischer Test ist leer: Git-Geschichte einlesen, danach die Regeldatei fuellen.
                 StartwissenDienst.anstossen(project)
             } else {
-                announceNotReached(project, if (hasInstance) "the Brain did not answer" else "no Brain instance was assigned")
+                announceNotReached(project, if (health?.status == "not_found") "this Brain no longer exists" else if (hasInstance) "the Brain did not answer" else "no Brain instance was assigned")
             }
         } catch (_: Exception) {
             // Onboarding must never throw into a pooled thread's caller.

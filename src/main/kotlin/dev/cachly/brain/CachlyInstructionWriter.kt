@@ -122,6 +122,11 @@ object CachlyInstructionWriter {
             // einem anderen Konto gehoeren) — wie saveApiKey im MCP-Server.
             linkedMapOf<String, Any?>("apiKey" to key).apply { if (instanz != null) put("instanceId", instanz) }
         }
+        schreibeCredentials(datei, inhalt)
+        HeimAblage.GESCHRIEBEN
+    }.getOrDefault(HeimAblage.FEHLER)
+
+    private fun schreibeCredentials(datei: File, inhalt: Map<String, Any?>) {
         datei.parentFile.mkdirs()
         val tmp = File(datei.parentFile, "credentials.json.tmp")
         tmp.writeText(toJson(inhalt, 0))
@@ -132,8 +137,21 @@ object CachlyInstructionWriter {
             tmp.toPath(), datei.toPath(),
             java.nio.file.StandardCopyOption.REPLACE_EXISTING,
         )
-        HeimAblage.GESCHRIEBEN
-    }.getOrDefault(HeimAblage.FEHLER)
+    }
+
+    /**
+     * Tauscht NUR die Instanz-ID in `<heim>/.cachly/credentials.json`, und nur,
+     * wenn dort genau [alteId] steht. Eine andere ID gehoert zu einem anderen
+     * Setup (anderes Konto, anderes Brain) und bleibt. Schluessel und alle
+     * anderen Felder bleiben unveraendert. Wirft nie; true = geaendert.
+     */
+    internal fun ersetzeHeimInstanz(alteId: String, neueId: String, heim: File): Boolean = runCatching {
+        val alt = leseCredentials(heim) ?: return@runCatching false
+        val neu = neueId.trim()
+        if (neu.isEmpty() || (alt["instanceId"] as? String)?.trim() != alteId.trim()) return@runCatching false
+        schreibeCredentials(credentialsDatei(heim), LinkedHashMap(alt).apply { put("instanceId", neu) })
+        true
+    }.getOrDefault(false)
 
     /** Wie [legeSchluesselImHeimAb], nur ja/nein: Liegt der Schluessel jetzt im Heimordner? (AiAssistantAnbindung) */
     internal fun speichereSchluesselImHeim(apiKey: String, instanceId: String, heim: File): Boolean =

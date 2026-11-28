@@ -233,8 +233,12 @@ object CachlyApiClient {
         val id = settings.instanceId
 
         // 1. Fetch instance info
-        val instJson = httpGet("$baseUrl/api/v1/instances/$id", settings.apiKey)
-            ?: return applyColdStartGuard(BrainHealth(status = "unreachable"))
+        val (instCode, instJson) = httpGetMitStatus("$baseUrl/api/v1/instances/$id", settings.apiKey)
+        // 404 mit angenommenem Schluessel: die Instanz gibt es nicht mehr (der Sofort-Test-
+        // Abraeumer loescht leere, unbenutzte Test-Brains nach 14 Tagen). Kein Netzfehler,
+        // und kein Schnappschuss: er zeigte sonst Zahlen eines Brains, das es nicht gibt.
+        if (instCode == 404) return BrainHealth(status = "not_found")
+        if (instJson == null) return applyColdStartGuard(BrainHealth(status = "unreachable"))
         val inst = gson.fromJson(instJson, InstanceResponse::class.java)
 
         // 2. Fetch memory stats
@@ -578,6 +582,57 @@ object CachlyApiClient {
         (nested ?: flat)?.trim()?.takeIf { it.isNotEmpty() }
     } catch (_: Exception) {
         null
+    }
+
+    /** HTTP-Status von GET /instances/<id>; -1 = Netzfehler oder keine Einwilligung. */
+    fun instanzStatus(instanceId: String): Int =
+        httpGetMitStatus("${apiBase()}/api/v1/instances/$instanceId", CachlySettings.getInstance().state.apiKey).first
+
+    /** Antwort von POST /instances/auto fuer [InstanzVerlust]. */
+    sealed class AutoErgebnis {
+        /** [neu] = der Server hat angelegt (201); false = er gab ein vorhandenes Brain zurueck (200). */
+        data class Id(val id: String, val neu: Boolean) : AutoErgebnis()
+        /** [code] -1 = Netzfehler; [grund] = "error"/"reason" aus der Antwort, falls lesbar. */
+        data class Fehler(val code: Int, val grund: String?) : AutoErgebnis()
+    }
+
+    fun requestAutoInstance(): AutoErgebnis {
+        val (code, text) = httpMitStatus("POST", "${apiBase()}/api/v1/instances/auto",
+            CachlySettings.getInstance().state.apiKey, "{}")
+        if (code in 200..201 && text != null) {
+            val id = parseAutoInstanceId(text)
+            if (id != null) return AutoErgebnis.Id(id, neu = code == 201)
+        }
+        val grund = try {
+            val o = com.google.gson.JsonParser.parseString(text ?: "").asJsonObject
+            (o.get("reason") ?: o.get("error"))?.takeIf { it.isJsonPrimitive }?.asString
+        } catch (_: Exception) { null }
+        return AutoErgebnis.Fehler(if (code in 200..201) 502 else code, grund)
+    }
+
+    private fun httpGetMitStatus(url: String, apiKey: String): Pair<Int, String?> =
+        httpMitStatus("GET", url, apiKey, null).let { (code, text) -> code to (if (code == 200) text else null) }
+
+    /** Status und Text (auch bei Fehlerstatus). -1 = Netzfehler oder keine Einwilligung. */
+    private fun httpMitStatus(method: String, url: String, apiKey: String, body: String?): Pair<Int, String?> {
+        if (!funktionJetzt()) return -1 to null
+        return try {
+            val conn = URI(url).toURL().openConnection() as HttpURLConnection
+            conn.requestMethod = method
+            conn.connectTimeout = 5000
+            conn.readTimeout = 5000
+            conn.setRequestProperty("Authorization", "Bearer $apiKey")
+            conn.setRequestProperty("Accept", "application/json")
+            conn.setRequestProperty("User-Agent", USER_AGENT)
+            if (body != null) {
+                conn.doOutput = true
+                conn.setRequestProperty("Content-Type", "application/json")
+                conn.outputStream.bufferedWriter().use { it.write(body) }
+            }
+            val code = conn.responseCode
+            val strom = if (code < 400) conn.inputStream else conn.errorStream
+            code to strom?.bufferedReader()?.use { it.readText() }
+        } catch (_: Exception) { -1 to null }
     }
 
     private fun httpPost(url: String, apiKey: String, body: String): String? =

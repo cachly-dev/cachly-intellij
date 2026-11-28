@@ -29,6 +29,7 @@ class BrainDoctorAction : AnAction() {
                 val s = CachlySettings.getInstance().state
                 val lines = mutableListOf<String>()
                 var allOk = true
+                var instanz404 = false
                 fun check(ok: Boolean, label: String, detail: String = "") {
                     if (!ok) allOk = false
                     lines.add("${if (ok) "✓" else "✗"} $label${if (detail.isNotEmpty()) " — $detail" else ""}")
@@ -50,7 +51,10 @@ class BrainDoctorAction : AnAction() {
                     when (instStatus) {
                         200 -> check(true, "Instance reachable")
                         401, 403 -> check(false, "Instance reachable", "auth rejected ($instStatus) — check API key / setup")
-                        404 -> check(false, "Instance reachable", "not found (404) — wrong instance ID?")
+                        404 -> {
+                            instanz404 = true
+                            check(false, "Instance reachable", InstanzVerlust.doctorGrund(s.apiKey))
+                        }
                         -1 -> check(false, "Instance reachable", "network error — Brain unreachable")
                         else -> check(false, "Instance reachable", "HTTP $instStatus")
                     }
@@ -80,7 +84,8 @@ class BrainDoctorAction : AnAction() {
                     else {
                         val choice = Messages.showDialog(
                             project,
-                            lines.joinToString("\n") + "\n\nFix your API key / instance ID in Settings → Tools → Cachly Brain.",
+                            lines.joinToString("\n") + if (instanz404) "\n\nTools → Connect Brain connects to a Brain again."
+                                else "\n\nFix your API key / instance ID in Settings → Tools → Cachly Brain.",
                             header,
                             arrayOf("Open Settings", "Close"),
                             0,

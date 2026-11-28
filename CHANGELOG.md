@@ -2,6 +2,12 @@
 
 ---
 
+## [0.9.17] – 2026-11-28 — *"A removed trial Brain is said out loud"*
+
+### Fixed
+- **A trial Brain that cachly removed no longer ends in "offline" or "already connected".** Since 2026-11-28 cachly deletes trial Brains that stayed empty and unused for 14 days. Your key stays valid, only the Brain is gone. The plugin now sees that the stored Brain answers "not found" while the key is accepted. With a trial key it creates one new, empty Brain (once per IDE session), saves its ID in the settings and tells you so. With a registered account it creates nothing by itself: the notice offers "Open dashboard" and "Reconnect". If creating fails, the notice names the next step (sign in, plan limit, network) and the plugin does not retry in that session.
+- **Brain Doctor names the reason.** Instead of "wrong instance ID?" it says that the key is accepted, the Brain no longer exists, and what to do next. The status bar shows "Brain: not found" instead of "offline", and Connect Brain no longer claims "already connected" for a Brain that is gone.
+
 ## [0.9.16] – 2026-11-27 — *"The yellow c. is back"*
 
 ### Changed

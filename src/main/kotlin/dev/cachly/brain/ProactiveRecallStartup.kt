@@ -71,6 +71,16 @@ class ProactiveRecallStartup : ProjectActivity {
                 return
             }
 
+            // Netz abseits des EDT: erst pruefen, ob das Brain noch da ist (404 = vom
+            // Sofort-Test-Abraeumer geloescht). Danach laeuft alles mit der richtigen ID.
+            ApplicationManager.getApplication().executeOnPooledThread {
+                if (project.isDisposed) return@executeOnPooledThread
+                InstanzVerlust.pruefeUndMelde(project)
+                weiter(project)
+            }
+        }
+
+        private fun weiter(project: Project) {
             // Projektwissen fuer den AI Assistant (prueft seinen Schalter selbst).
             RegelwissenDienst.anstossen(project)
             // Ein leeres Brain liest die Git-Geschichte des Projekts ein (prueft selbst, ob es leer ist).
